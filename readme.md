@@ -1,4 +1,4 @@
-# Facebook Chat Analyzer
+# Facebook Chat Analyser
 
 A script that creates statistics intended for Facebook Messenger group chats.
 
@@ -25,10 +25,6 @@ The input file must start with `facebook-` and follow the format:
 
 ## Installation
 1. Clone the repository:
-    ```sh
-    git clone https://github.com/yourusername/facebook-chat-analyzer.git
-    cd facebook-chat-analyzer
-    ```
 2. Install the required dependencies:
     ```sh
     pip install -r requirements.txt
