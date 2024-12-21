@@ -24,7 +24,7 @@ The input file must start with `facebook-` and follow the format:
 `facebook-'username'-'date'-`
 
 ## Installation
-1. Clone the repository:
+1. Clone the repository.
 2. Install the required dependencies:
     ```sh
     pip install -r requirements.txt
