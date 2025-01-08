@@ -6,10 +6,19 @@ from PIL import Image, ImageDraw, ImageFont
 import os
 from collections import Counter
 import glob
+import platform
+
 
 #Olympic podium colors
 COLORS = ['#ffd700','#A7A7AD','#A77044']
+IS_WINDOWS = platform.system() == 'Windows'
+IS_MAC = platform.system() == 'Darwin'
+MONTH = datetime.now() - timedelta(days=30)
+MONTHNAME = MONTH.strftime('%B')
 
+
+def standarize_path(path):
+    return path.replace('\\', '/') if IS_WINDOWS else path
 
 
 def init_members(data):
@@ -22,20 +31,14 @@ def init_members(data):
 
 def count_messages(data, members):
     for message in data['messages']:
+
+        if 'content' in message and 'vote' in message['content']:
+            continue
+        
         for member in members:
             if member['name'] == message['sender_name']:
                 member['num_of_messages'] += 1
 
-
-def messages_info(data):
-    m_list = []
-    for message in data['messages']:
-        try:
-            if message['reactions']:
-                m_list.append({'sent_by': message['sender_name'], 'text': message['content'], 'num_reactions': len(message['reactions'])})
-        except KeyError:
-            continue
-    return m_list
 
 def standarize(data):
     for participant in data['participants']:
@@ -66,12 +69,6 @@ def get_top_3(data):
                 output.append({'name': mem['name'], 'num_of_messages': s[1]})
 
     
-
-def findTop3Reactions(reaction_info):
-    sorted_reactions = sorted(reaction_info, key=lambda x: x['num_reactions'], reverse=True)
-    return sorted_reactions[:3]
-
-
 def getMostReactedtoPhotos(data):
     m_list = []
     for message in data['messages']:
@@ -99,6 +96,7 @@ def displayGeneral(members,debug):
     plt.xticks(rotation=50)
     plt.grid(axis='y')
     plt.title('Liczba wiadomości na osobę (przynajmniej 15 wiadomości)') 
+        
     plt.xlabel('Uczestnicy')
     plt.ylabel('Liczba wiadomości')
     plt.tight_layout()
@@ -106,7 +104,7 @@ def displayGeneral(members,debug):
     for bar in bars:
         yval = bar.get_height()
         plt.text(bar.get_x() + bar.get_width()/2.0, yval + 1, int(yval), ha='center', va='bottom')
-    plt.savefig('./results/general.png')
+    plt.savefig(f'./results{MONTHNAME}/general.png')
     if debug:
         plt.show()
 
@@ -124,7 +122,7 @@ def displayTop3(members,debug):
     for bar in bars:
         yval = bar.get_height()
         plt.text(bar.get_x() + bar.get_width()/2.4  , yval + 1, yval)
-    plt.savefig('./results/top3.png')
+    plt.savefig(f'./results{MONTHNAME}/top3.png')
     if debug:
         plt.show()
 
@@ -133,7 +131,7 @@ def displayTop3(members,debug):
 def displayTop3Photos(photos, debug):
     for i, photo in enumerate(photos):
         
-        im = Image.open(r'/Users/milosz/Downloads/facebook-rojekmilosz-2024-06-04-a8JdnXoW/' + photo['photo'])
+        im = Image.open(r'/Users/milosz/Desktop/messenger/facebook-rojekmilosz-2025-01-07-ACyRZ1Fo/' + photo['photo'])
 
         x,y = im.width / 2, 0
         fillcolor = "white"
@@ -144,7 +142,8 @@ def displayTop3Photos(photos, debug):
 
         # fontsize = scaleFontsize(im, text, font_path)
 
-        if im.getbbox()[2] < 500:
+        print(text,im.getbbox(), im.getbbox()[2])
+        if im.getbbox()[2] < 500 or im.getbbox()[3] < 500:
             fontsize = 25
         else:
             fontsize = 55
@@ -152,10 +151,12 @@ def displayTop3Photos(photos, debug):
         
         font = ImageFont.truetype(font_path, fontsize)
         text_width = font.getlength(text)
+
+        newim = Image.new('RGB', (im.width, im.height + fontsize), 'black')   
+        newim.paste(im, (0, fontsize))
+
+        draw = ImageDraw.Draw(newim)
         x, y = (im.width - text_width) / 2, 0
-
-
-        draw = ImageDraw.Draw(im)
 
 
         draw.text((x-1, y-1), text, font=font, fill=shadowcolor)
@@ -165,21 +166,20 @@ def displayTop3Photos(photos, debug):
         draw.text((x, y), text, font=font, fill=fillcolor)
 
         if debug:
-            im.show()
+            newim.show()
 
-        month = datetime.now() - timedelta(days=30)
-        monthname = month.strftime('%B')
+        
         try:
-            im.save(f'./results/top3photos{monthname}/photo{i + 1}.png')
+            newim.save(f'./results{MONTHNAME}/top3photos{MONTHNAME}/photo{i + 1}.png')
         except FileNotFoundError:
-            os.mkdir(f'./results/top3photos{monthname}/')
-            im.save(f'./results/top3photos{monthname}/photo{i + 1}.png')
+            os.mkdir(f'./results{MONTHNAME}/top3photos{MONTHNAME}/')
+            newim.save(f'./results{MONTHNAME}/top3photos{MONTHNAME}/photo{i + 1}.png')
 
 def average_message_length(data):
     lengths = {}
     for message in data['messages']:
         sender = message['sender_name']
-        if 'content' in message and 'voted' not in message['content']:
+        if 'content' in message and 'vote' not in message['content']:
             length = len(message['content'])
             if sender in lengths:
                 lengths[sender].append(length)
@@ -198,6 +198,8 @@ def most_used_words(data, top_n=50):
     words = []
     for message in data['messages']:
         if 'content' in message:
+            if 'vote' in message['content']:
+                continue
             words.extend(re.findall(r'\w+', message['content'].lower()))
     word_counts = Counter(words)
     return word_counts.most_common(top_n), top_n
@@ -222,7 +224,7 @@ def display_most_active_days(active_days, top_n, debug):
     for bar in bars:
         yval = bar.get_height()
         plt.text(bar.get_x() + bar.get_width()/2.0, yval + 1, int(yval), ha='center', va='bottom')
-    plt.savefig('./results/active_days.png')
+    plt.savefig(f'./results{MONTHNAME}/active_days.png')
     if debug:
         plt.show()
 
@@ -245,7 +247,7 @@ def display_most_used_words(top_words, top_n, debug):
     for bar in bars:
         yval = bar.get_height()
         plt.text(bar.get_x() + bar.get_width()/2.0, yval + 1, int(yval), ha='center', va='bottom')
-    plt.savefig('./results/words.png')
+    plt.savefig(f'./results{MONTHNAME}/words.png')
 
     if debug:
         plt.show()
@@ -262,8 +264,8 @@ def display_average_message_lengths(avg_lengths, debug):
     
     for bar, length in zip(bars, lengths):
         yval = bar.get_height()
-        plt.text(bar.get_x() + bar.get_width()/2.0, yval + 1, f'{int(yval)}', ha='center', va='bottom')
-    plt.savefig('./results/avg_lengths.png')
+        plt.text(bar.get_x() + bar.get_width()/2.0, yval + 0.5, f'{int(yval)}', ha='center', va='bottom')
+    plt.savefig(f'./results{MONTHNAME}/avg_lengths.png')
     if debug:
         plt.show()
 
@@ -276,22 +278,26 @@ def pick_chat_to_analyze(folder):
         chat_name = path.split('_')[0]
         chats.append((i+1,chat_name))
         paths.append((i+1,path))
+    print(f'Available chats in {folder}:')
     print(chats)
     choice = int(input('Pick a chat to analyze (0 picks nothing and continues to other available folders if there are any): '))
-    if choice > len(chats) or choice < 1:
-        print('Wrong choice, continuing to other available folders')
-        return 0
+    if 1 > choice > len(chats):
+        print('Wrong choice, exiting')
+        return None
+    elif choice == 0:
+        print('Picked 0, continuing to other available folders')
+        return None
     else:
         path2 = paths[choice-1][1]
     return path2
     
 
 def get_facebook_folders():
-    current_dir = os.getcwd()
+    current_dir = standarize_path(os.getcwd())
     facebook_folders = [folder for folder in os.listdir(current_dir) if os.path.isdir(folder) and folder.startswith('facebook')]
     if not facebook_folders:
-        print('Not found any facebook folders, try putting the folder in the same directory as the script')
-        exit()
+        print('Did not find any facebook folders, try putting the folder in the same directory as the script')
+        exit(1)
     return facebook_folders
 
 
@@ -304,10 +310,8 @@ def process_chat(path):
         count_messages(data, members)
 
         top_3 = get_top_3(members)
-        info = messages_info(data)
         photos = getMostReactedtoPhotos(data)
         top3photos = getTop3Photos(photos)
-        top3reactions = findTop3Reactions(info)
         active_days = most_active_days(data)    
         top_words = most_used_words(data)
         average_message_lengths = average_message_length(data)
@@ -321,12 +325,12 @@ def process_chat(path):
         display_average_message_lengths(average_message_lengths,debug)
         ###
 
-        print('Data saved in ./results folder')
+        print(f'Data saved in ./results{MONTHNAME} folder')
 
 
 if __name__ == "__main__":
     debug = False
-    os.makedirs('./results', exist_ok=True)
+    os.makedirs(f'./results{MONTHNAME}', exist_ok=True)
 
 
     facebook_folders = get_facebook_folders()
@@ -334,6 +338,7 @@ if __name__ == "__main__":
     picked = False
     for folder in facebook_folders:
         chat_to_analyze = pick_chat_to_analyze(folder)
+
         if chat_to_analyze:
             path = f'./{folder}/your_facebook_activity/messages/inbox/{chat_to_analyze}' 
             picked = True
