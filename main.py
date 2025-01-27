@@ -12,10 +12,9 @@ import platform
 #Olympic podium colors
 COLORS = ['#ffd700','#A7A7AD','#A77044']
 IS_WINDOWS = platform.system() == 'Windows'
-IS_MAC = platform.system() == 'Darwin'
 MONTH = datetime.now() - timedelta(days=30)
 MONTHNAME = MONTH.strftime('%B')
-
+STOPWORDS_POLISH = ["ja", "mnie", "mój", "my", "nasz", "nasze", "ty", "jesteś", "masz", "będziesz", "byś", "twój", "sam", "on", "jego", "jej", "ona", "jest", "oni", "ich", "co", "który", "kto", "ktoś", "to", "te", "tamte", "są", "były", "być", "mieć", "ma", "miał", "mając", "robić", "robi", "zrobił", "robiąc", "a", "i", "ale", "jeśli", "lub", "ponieważ", "jak", "aż", "podczas", "z", "w", "przez", "dla", "około", "przeciwko", "pomiędzy", "do", "trakcie", "przed", "po", "powyżej", "poniżej", "od", "na", "nad", "pod", "ponownie", "dalej", "wtedy", "raz", "tu", "tam", "kiedy", "gdzie", "dlaczego", "wszystko", "jakikolwiek", "oba", "każdy", "kilka", "więcej", "większość", "inne", "niektóre", "takie", "nie", "ani", "tylko", "własny", "taki", "tak", "niż", "zbyt", "bardzo", "może", "będzie", "prostu", "powinien", "teraz", "o", "mógł", "był", "byli"]
 
 def standarize_path(path):
     return path.replace('\\', '/') if IS_WINDOWS else path
@@ -175,6 +174,31 @@ def displayTop3Photos(photos, debug):
             os.mkdir(f'./results{MONTHNAME}/top3photos{MONTHNAME}/')
             newim.save(f'./results{MONTHNAME}/top3photos{MONTHNAME}/photo{i + 1}.png')
 
+
+def GetTopNLinks(data, top_n=15):
+    links = []
+    for message in data['messages']:
+        # Check if the message contains content, reactions, and content is not empty
+        if 'content' in message and message['content'] and 'reactions' in message:
+            # Find all matches for valid links in the message content
+            matches = re.findall(r'(?:http|ftp|https):\/\/([\w_-]+(?:\.[\w_-]+)+)([\w.,@?^=%&:\/~+#-]*[\w@?^=%&\/~+#-])', message['content'])
+            if matches:
+                # Combine protocol, domain, and path into full links
+                full_links = ["".join(match) for match in matches]
+                for link in full_links:
+                    # Append only if the message has reactions and contains valid links
+                    links.append({'URL': link, 'Sender': message['sender_name'], 'Num_reactions': len(message['reactions'])})
+
+    #Save to file
+    with open(f'./results{MONTHNAME}/links.txt', 'w') as f:
+        for link in links:
+            f.write(f"{link['URL']} (sent by {link['Sender']}): {link['Num_reactions']} reactions\n")
+
+    topnlinks = links[:top_n]
+    print(f'Returned top {len(topnlinks)} links')
+    # Return the top N links by their occurrence in the list
+    return topnlinks, len(topnlinks)
+
 def average_message_length(data):
     lengths = {}
     for message in data['messages']:
@@ -200,7 +224,7 @@ def most_used_words(data, top_n=50):
         if 'content' in message:
             if 'vote' in message['content']:
                 continue
-            words.extend(re.findall(r'\w+', message['content'].lower()))
+            words.extend(word for word in re.findall(r'\w+', message['content'].lower()) if word not in STOPWORDS_POLISH)
     word_counts = Counter(words)
     return word_counts.most_common(top_n), top_n
 
@@ -309,6 +333,7 @@ def process_chat(path):
         members = init_members(data)
         count_messages(data, members)
 
+        GetTopNLinks(data)
         top_3 = get_top_3(members)
         photos = getMostReactedtoPhotos(data)
         top3photos = getTop3Photos(photos)
@@ -329,7 +354,7 @@ def process_chat(path):
 
 
 if __name__ == "__main__":
-    debug = False
+    debug = True
     os.makedirs(f'./results{MONTHNAME}', exist_ok=True)
 
 
