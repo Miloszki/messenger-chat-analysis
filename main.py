@@ -178,7 +178,8 @@ def GetTopNLinks(data, top_n=15):
     #Save to file
     with open(f'./results{MONTHNAME}/links.txt', 'w', encoding='UTF-8') as f:
         for link in links:
-            f.write(f"{link['URL']} (sent by {link['Sender']}): {link['Num_reactions']} reactions\n")
+            reaction_word = "reactions" if link['Num_reactions'] > 1 else "reaction"
+            f.write(f"{link['URL']} (sent by {link['Sender']}): {link['Num_reactions']} {reaction_word}\n")
 
     topnlinks = links[:top_n]
     print(f'Returned top {len(topnlinks)} links')
