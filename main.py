@@ -7,14 +7,14 @@ import os
 from collections import Counter
 import glob
 import platform
-
+import emoji
 
 #Olympic podium colors
 COLORS = ['#ffd700','#A7A7AD','#A77044']
 IS_WINDOWS = platform.system() == 'Windows'
 MONTH = datetime.now() - timedelta(days=30)
 MONTHNAME = MONTH.strftime('%B')
-STOPWORDS_POLISH = ["ja", "mnie", "mój", "my", "nasz", "nasze", "ty", "jesteś", "masz", "będziesz", "byś", "twój", "sam", "on", "jego", "jej", "ona", "jest", "oni", "ich", "co", "który", "kto", "ktoś", "to", "te", "tamte", "są", "były", "być", "mieć", "ma", "miał", "mając", "robić", "robi", "zrobił", "robiąc", "a", "i", "ale", "jeśli", "lub", "ponieważ", "jak", "aż", "podczas", "z", "w", "przez", "dla", "około", "przeciwko", "pomiędzy", "do", "trakcie", "przed", "po", "powyżej", "poniżej", "od", "na", "nad", "pod", "ponownie", "dalej", "wtedy", "raz", "tu", "tam", "kiedy", "gdzie", "dlaczego", "wszystko", "jakikolwiek", "oba", "każdy", "kilka", "więcej", "większość", "inne", "niektóre", "takie", "nie", "ani", "tylko", "własny", "taki", "tak", "niż", "zbyt", "bardzo", "może", "będzie", "prostu", "powinien", "teraz", "o", "mógł", "był", "byli"]
+STOPWORDS_POLISH = ["za","by","albo","było","ktos","mu","tez","no","się","sie","bo","ze","że","mam","czy","mi","ten","będę","bez", "juz","ja", "mnie", "mój", "my", "nasz", "nasze", "ty", "jesteś", "masz", "będziesz", "byś", "twój", "sam", "on", "jego", "jej", "ona", "jest", "oni", "ich", "co", "który", "kto", "ktoś", "to", "te", "tamte", "są", "były", "być", "mieć", "ma", "miał", "mając", "robić", "robi", "zrobił", "robiąc", "a", "i", "ale", "jeśli", "lub", "ponieważ", "jak", "aż", "podczas", "z", "w", "przez", "dla", "około", "przeciwko", "pomiędzy", "do", "trakcie", "przed", "po", "powyżej", "poniżej", "od", "na", "nad", "pod", "ponownie", "dalej", "wtedy", "raz", "tu", "tam", "kiedy", "gdzie", "dlaczego", "wszystko", "jakikolwiek", "oba", "każdy", "kilka", "więcej", "większość", "inne", "niektóre", "takie", "nie", "ani", "tylko", "własny", "taki", "tak", "niż", "zbyt", "bardzo", "może", "będzie", "prostu", "powinien", "teraz", "o", "mógł", "był", "byli"]
 
 def standarize_path(path):
     return path.replace('\\', '/') if IS_WINDOWS else path
@@ -33,7 +33,7 @@ def count_messages(data, members):
 
         if 'content' in message and 'vote' in message['content']:
             continue
-        
+
         for member in members:
             if member['name'] == message['sender_name']:
                 member['num_of_messages'] += 1
@@ -135,25 +135,21 @@ def displayTop3Photos(photos, folder_path, debug):
         shadowcolor = "black"
         text = photo['sent_by'] + ' ' + str(photo['num_reactions'])
 
-       # Dynamically adjust font size based on image size
         if im.width < 500 or im.height < 500:
             fontsize = 20
         else:
             fontsize = 40
 
-        # Use a TrueType font with the dynamically determined size
         font_path = "C:/Windows/Fonts/arial.ttf" if IS_WINDOWS else "/System/Library/Fonts/Supplemental/Arial.ttf"
         font = ImageFont.truetype(font_path, fontsize)
 
-        # Calculate text width using the selected font
         text_width = font.getlength(text)
-        newim = Image.new('RGB', (im.width, im.height + fontsize), 'black')  # Add space for text
+        newim = Image.new('RGB', (im.width, im.height + fontsize), 'black')
         newim.paste(im, (0, fontsize))
 
         draw = ImageDraw.Draw(newim)
         x, y = (im.width - text_width) / 2, 0
 
-        # Draw text with shadow effect
         draw.text((x - 1, y - 1), text, font=font, fill=shadowcolor)
         draw.text((x + 1, y - 1), text, font=font, fill=shadowcolor)
         draw.text((x - 1, y + 1), text, font=font, fill=shadowcolor)
@@ -172,15 +168,11 @@ def displayTop3Photos(photos, folder_path, debug):
 def GetTopNLinks(data, top_n=15):
     links = []
     for message in data['messages']:
-        # Check if the message contains content, reactions, and content is not empty
         if 'content' in message and message['content'] and 'reactions' in message:
-            # Find all matches for valid links in the message content
             matches = re.findall(r'(?:http|ftp|https):\/\/([\w_-]+(?:\.[\w_-]+)+)([\w.,@?^=%&:\/~+#-]*[\w@?^=%&\/~+#-])', message['content'])
             if matches:
-                # Combine protocol, domain, and path into full links
                 full_links = ["".join(match) for match in matches]
                 for link in full_links:
-                    # Append only if the message has reactions and contains valid links
                     links.append({'URL': link, 'Sender': message['sender_name'], 'Num_reactions': len(message['reactions'])})
 
     #Save to file
@@ -190,7 +182,7 @@ def GetTopNLinks(data, top_n=15):
 
     topnlinks = links[:top_n]
     print(f'Returned top {len(topnlinks)} links')
-    # Return the top N links by their occurrence in the list
+
     return topnlinks, len(topnlinks)
 
 def average_message_length(data):
@@ -218,7 +210,8 @@ def most_used_words(data, top_n=50):
         if 'content' in message:
             if 'vote' in message['content']:
                 continue
-            words.extend(word for word in re.findall(r'\w+', message['content'].lower()) if word not in STOPWORDS_POLISH)
+            content_without_links = re.sub(r'(https?://\S+)', '', message['content'])
+            words.extend(word for word in re.findall(r'\w+', content_without_links.lower()) if word not in STOPWORDS_POLISH)
     word_counts = Counter(words)
     return word_counts.most_common(top_n), top_n
 
@@ -287,6 +280,63 @@ def display_average_message_lengths(avg_lengths, debug):
     if debug:
         plt.show()
 
+def unicode_escape(chars, data_dict):
+    return chars.encode('unicode-escape').decode()
+
+def extract_emojis(data):
+    emojis = []
+    emojis_unic = []
+    for message in data['messages']:
+        if 'content' in message:
+            emojis_in_message = [char for char in message['content'] if char in emoji.EMOJI_DATA]
+            emojis_in_message_unicode = [emoji.replace_emoji(e, replace=unicode_escape) for e in emojis_in_message]
+            emojis.extend(emojis_in_message)
+            emojis_unic.extend(emojis_in_message_unicode)
+    return emojis,emojis_unic
+
+def create_emoji_ascii_art(emojis):
+    if not emojis:
+        print("No emojis available to create ASCII art.")
+        return
+
+    fallback_emoji = "⬛"
+    ascii_template = r"""
+                   ooooooooooooo
+              ooooooooooooooooooooooo
+          ooooooooooooooooooooooooooooooo
+       ooooooooooooooooooooooooooooooooooooo
+     ooooooooooooooooooooooooooooooooooooooooo
+   ooooooooooooooooooooooooooooooooooooooooooooo
+  ooooooooooooo  oooooooooooooooo  oooooooooooooo
+ oooooooooooo      oooooooooooo      ooooooooooooo
+ oooooooooooooo  oooooooooooooooo  ooooooooooooooo
+ooooooooooooooooooooooooooooooooooooooooooooooooooo
+ooooo     ooooooooooooooooooooooooooooooo     ooooo
+ooooooo ooooooooooooooooooooooooooooooooooo ooooooo
+ oooooo  ooooooooooooooooooooooooooooooooo  oooooo
+ ooooooo  ooooooooooooooooooooooooooooooo  ooooooo
+  ooooooo  ooooooooooooooooooooooooooooo  ooooooo
+   oooooooo  ooooooooooooooooooooooooo  oooooooo
+     ooooooooo  ooooooooooooooooooo  ooooooooo
+       oooooooooo  ooooooooooooo  oooooooooo      
+          oooooooooo           oooooooooo      
+              ooooooooooooooooooooooo          
+                   ooooooooooooo
+    """
+
+    emoji_iter = iter(emojis)  
+    result = ""
+    for char in ascii_template:
+        if char == 'o':
+            result += next(emoji_iter, fallback_emoji)
+        elif char == ' ':
+            result += '  '
+        else:
+            result += char
+    #TODO: saving to png
+    print(result)
+    return result
+
 
 def pick_chat_to_analyze(folder):
     chats = []
@@ -320,8 +370,6 @@ def get_facebook_folders():
 
 
 def process_chat(path, folder):
-    # print(path)
-    # exit()
     with open(f'{path}/message_1.json') as file:
         data = json.load(file)
 
@@ -336,6 +384,11 @@ def process_chat(path, folder):
         active_days = most_active_days(data)    
         top_words = most_used_words(data)
         average_message_lengths = average_message_length(data)
+
+
+        all_emojis, _ = extract_emojis(data)
+        create_emoji_ascii_art(all_emojis)
+
 
         ###
         displayGeneral(members,debug)
