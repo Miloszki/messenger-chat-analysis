@@ -126,54 +126,48 @@ def displayTop3(members,debug):
         plt.show()
 
 
-
-def displayTop3Photos(photos, debug):
+def displayTop3Photos(photos, folder_path, debug):
     for i, photo in enumerate(photos):
-        
-        im = Image.open(r'/Users/milosz/Desktop/messenger/facebook-rojekmilosz-2025-01-07-ACyRZ1Fo/' + photo['photo'])
+        im = Image.open(os.path.join(folder_path, photo['photo']))
 
-        x,y = im.width / 2, 0
+        x, y = im.width / 2, 0
         fillcolor = "white"
         shadowcolor = "black"
         text = photo['sent_by'] + ' ' + str(photo['num_reactions'])
 
-        font_path = "/System/Library/Fonts/Helvetica.ttc" 
-
-        # fontsize = scaleFontsize(im, text, font_path)
-
-        print(text,im.getbbox(), im.getbbox()[2])
-        if im.getbbox()[2] < 500 or im.getbbox()[3] < 500:
-            fontsize = 25
+       # Dynamically adjust font size based on image size
+        if im.width < 500 or im.height < 500:
+            fontsize = 20
         else:
-            fontsize = 55
+            fontsize = 40
 
-        
+        # Use a TrueType font with the dynamically determined size
+        font_path = "C:/Windows/Fonts/arial.ttf" if IS_WINDOWS else "/System/Library/Fonts/Supplemental/Arial.ttf"
         font = ImageFont.truetype(font_path, fontsize)
-        text_width = font.getlength(text)
 
-        newim = Image.new('RGB', (im.width, im.height + fontsize), 'black')   
+        # Calculate text width using the selected font
+        text_width = font.getlength(text)
+        newim = Image.new('RGB', (im.width, im.height + fontsize), 'black')  # Add space for text
         newim.paste(im, (0, fontsize))
 
         draw = ImageDraw.Draw(newim)
         x, y = (im.width - text_width) / 2, 0
 
-
-        draw.text((x-1, y-1), text, font=font, fill=shadowcolor)
-        draw.text((x+1, y-1), text, font=font, fill=shadowcolor)
-        draw.text((x-1, y+1), text, font=font, fill=shadowcolor)
-        draw.text((x+1, y+1), text, font=font, fill=shadowcolor)
+        # Draw text with shadow effect
+        draw.text((x - 1, y - 1), text, font=font, fill=shadowcolor)
+        draw.text((x + 1, y - 1), text, font=font, fill=shadowcolor)
+        draw.text((x - 1, y + 1), text, font=font, fill=shadowcolor)
+        draw.text((x + 1, y + 1), text, font=font, fill=shadowcolor)
         draw.text((x, y), text, font=font, fill=fillcolor)
 
         if debug:
             newim.show()
 
-        
         try:
             newim.save(f'./results{MONTHNAME}/top3photos{MONTHNAME}/photo{i + 1}.png')
         except FileNotFoundError:
             os.mkdir(f'./results{MONTHNAME}/top3photos{MONTHNAME}/')
             newim.save(f'./results{MONTHNAME}/top3photos{MONTHNAME}/photo{i + 1}.png')
-
 
 def GetTopNLinks(data, top_n=15):
     links = []
@@ -190,7 +184,7 @@ def GetTopNLinks(data, top_n=15):
                     links.append({'URL': link, 'Sender': message['sender_name'], 'Num_reactions': len(message['reactions'])})
 
     #Save to file
-    with open(f'./results{MONTHNAME}/links.txt', 'w') as f:
+    with open(f'./results{MONTHNAME}/links.txt', 'w', encoding='UTF-8') as f:
         for link in links:
             f.write(f"{link['URL']} (sent by {link['Sender']}): {link['Num_reactions']} reactions\n")
 
@@ -298,7 +292,7 @@ def pick_chat_to_analyze(folder):
     chats = []
     paths = []
     for i, file in enumerate(glob.glob(f'./{folder}/your_facebook_activity/messages/inbox/*')):
-        path = file.split('/')[-1]
+        path = standarize_path(file).split('/')[-1]
         chat_name = path.split('_')[0]
         chats.append((i+1,chat_name))
         paths.append((i+1,path))
@@ -325,7 +319,9 @@ def get_facebook_folders():
     return facebook_folders
 
 
-def process_chat(path):
+def process_chat(path, folder):
+    # print(path)
+    # exit()
     with open(f'{path}/message_1.json') as file:
         data = json.load(file)
 
@@ -344,7 +340,7 @@ def process_chat(path):
         ###
         displayGeneral(members,debug)
         displayTop3(top_3,debug)
-        displayTop3Photos(top3photos,debug)
+        displayTop3Photos(top3photos, folder, debug)
         display_most_active_days(*active_days,debug)
         display_most_used_words(*top_words,debug)
         display_average_message_lengths(average_message_lengths,debug)
@@ -373,7 +369,7 @@ if __name__ == "__main__":
         print('Folder with message_1.json not found')
         exit()
 
-    process_chat(path)
+    process_chat(path,folder)
 
 
         
