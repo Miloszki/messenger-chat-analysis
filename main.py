@@ -8,6 +8,7 @@ from collections import Counter
 import glob
 import platform
 import emoji
+from shutil import copyfile
 
 #Olympic podium colors
 COLORS = ['#ffd700','#A7A7AD','#A77044']
@@ -85,6 +86,19 @@ def getTop3Photos(photo_data):
     top3 = sorted_data[:3]
     return top3
 
+def getMostReactedtoVideos(data):
+    m_list = []
+    for message in data['messages']:
+        try:
+            if message['videos']:
+                m_list.append({'sent_by': message['sender_name'], 'video': message['videos'][0]['uri'], 'num_reactions': len(message['reactions'])})
+        except KeyError:
+            continue
+    return m_list
+
+
+def getTop3Videos(video_data):
+    return sorted(video_data, reverse=True, key=lambda x: x['num_reactions'])[:3]
 
 def displayGeneral(members,debug):
     plt.figure(figsize=(12, 6))
@@ -164,6 +178,18 @@ def displayTop3Photos(photos, folder_path, debug):
         except FileNotFoundError:
             os.mkdir(f'./results{MONTHNAME}/top3photos{MONTHNAME}/')
             newim.save(f'./results{MONTHNAME}/top3photos{MONTHNAME}/photo{i + 1}.png')
+
+def saveTop3Videos(videos, folder_path):
+    output_dir = f'./results{MONTHNAME}/top3videos{MONTHNAME}/'
+    os.makedirs(output_dir, exist_ok=True)
+    for i, video in enumerate(videos):
+        source = os.path.join(folder_path, video['video'])
+        ext = os.path.splitext(source)[1] or '.mp4'
+        destination = os.path.join(output_dir, f'video{i + 1}{ext}')
+        try:
+            copyfile(source, destination)
+        except FileNotFoundError:
+            print(f"File not found: {source}")
 
 def GetTopNLinks(data, top_n=15):
     links = []
@@ -386,11 +412,13 @@ def process_chat(path, folder):
         top_words = most_used_words(data)
         average_message_lengths = average_message_length(data)
 
+        videos = getMostReactedtoVideos(data)
+        top3videos = getTop3Videos(videos)
 
         all_emojis, _ = extract_emojis(data)
         create_emoji_ascii_art(all_emojis)
 
-
+        saveTop3Videos(top3videos, folder)
         ###
         displayGeneral(members,debug)
         displayTop3(top_3,debug)
@@ -404,7 +432,10 @@ def process_chat(path, folder):
 
 
 if __name__ == "__main__":
-    debug = True
+    debug = False
+    if debug:
+        MONTHNAME = 'TEST'
+
     os.makedirs(f'./results{MONTHNAME}', exist_ok=True)
 
 
