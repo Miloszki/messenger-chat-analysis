@@ -1,6 +1,7 @@
 import json
 import re
 from matplotlib import pyplot as plt
+import matplotlib
 from datetime import datetime, timedelta
 from PIL import Image, ImageDraw, ImageFont
 import os
@@ -9,13 +10,17 @@ import glob
 import platform
 import emoji
 from shutil import copyfile
+from nltk.corpus import stopwords
 
 #Olympic podium colors
-COLORS = ['#ffd700','#A7A7AD','#A77044']
+COLORS = ['#E6C200','#A7A7AD','#A77044']
 IS_WINDOWS = platform.system() == 'Windows'
 MONTH = datetime.now() - timedelta(days=30)
 MONTHNAME = MONTH.strftime('%B')
-STOPWORDS_POLISH = ["za","by","albo","było","ktos","mu","tez","no","się","sie","bo","ze","że","mam","czy","mi","ten","będę","bez", "juz","ja", "mnie", "mój", "my", "nasz", "nasze", "ty", "jesteś", "masz", "będziesz", "byś", "twój", "sam", "on", "jego", "jej", "ona", "jest", "oni", "ich", "co", "który", "kto", "ktoś", "to", "te", "tamte", "są", "były", "być", "mieć", "ma", "miał", "mając", "robić", "robi", "zrobił", "robiąc", "a", "i", "ale", "jeśli", "lub", "ponieważ", "jak", "aż", "podczas", "z", "w", "przez", "dla", "około", "przeciwko", "pomiędzy", "do", "trakcie", "przed", "po", "powyżej", "poniżej", "od", "na", "nad", "pod", "ponownie", "dalej", "wtedy", "raz", "tu", "tam", "kiedy", "gdzie", "dlaczego", "wszystko", "jakikolwiek", "oba", "każdy", "kilka", "więcej", "większość", "inne", "niektóre", "takie", "nie", "ani", "tylko", "własny", "taki", "tak", "niż", "zbyt", "bardzo", "może", "będzie", "prostu", "powinien", "teraz", "o", "mógł", "był", "byli"]
+#from https://raw.githubusercontent.com/bieli/stopwords/master/polish.stopwords.txt
+STOPWORDS_POLISH = set(stopwords.words('polish'))
+plt.style.use('rose-pine-moon')
+
 
 def standarize_path(path):
     return path.replace('\\', '/') if IS_WINDOWS else path
@@ -127,11 +132,11 @@ def displayTop3(members,debug):
     list_mess = [x['num_of_messages']for x in members]
     bars = plt.bar(list_names, height=list_mess, width=0.3,color=COLORS)
     plt.xticks()
-    plt.grid(axis='y')
-    plt.tight_layout()
     plt.title('Top 3 najbardziej udzielających się osób')
     plt.xlabel('Uczestnicy')
     plt.ylabel('Liczba wiadomości')
+    plt.grid(axis='y')
+    plt.tight_layout()
     for bar in bars:
         yval = bar.get_height()
         plt.text(bar.get_x() + bar.get_width()/2.4  , yval + 1, yval)
@@ -231,16 +236,45 @@ def most_active_days(data, top_n=3):
     date_counts = Counter(date_strings)
     return date_counts.most_common(top_n), top_n
 
-def most_used_words(data, top_n=50):
+def most_used_words(data, top_n=500_000):
     words = []
     for message in data['messages']:
-        if 'content' in message:
+        if 'content' in message.keys():
             if 'vote' in message['content']:
                 continue
             content_without_links = re.sub(r'(https?://\S+)', '', message['content'])
             words.extend(word for word in re.findall(r'\w+', content_without_links.lower()) if word not in STOPWORDS_POLISH)
-    word_counts = Counter(words)
-    return word_counts.most_common(top_n), top_n
+    return words, top_n
+
+
+def create_word_cloud(words, top_n, debug):
+    import nltk
+    import numpy as np
+    from wordcloud import WordCloud
+
+    tokens = nltk.word_tokenize(' '.join(words)) 
+    filtered_words = [word for word in tokens if word not in STOPWORDS_POLISH]
+
+    #cat stencil I use for my groupchat
+    mask_file = r'misc\stencils\cat_stencil.png'
+    cat_mask =np.array(Image.open(mask_file))
+
+    wc = WordCloud(background_color='#232136', 
+               max_words=2000,mask=cat_mask, 
+               contour_width=5,
+               min_font_size=6, 
+               contour_color='#232136',
+               colormap='BuPu_r')
+    wc.generate(' '.join(filtered_words))
+
+    wc.to_file(f'./results{MONTHNAME}/words.png')
+
+    if True:
+        plt.figure(figsize=(12, 6))
+        plt.axis("off")
+        plt.imshow(wc)
+        plt.title(f'Top {top_n} najczęściej używanych słów')
+        plt.show()
 
 def display_most_active_days(active_days, top_n, debug):
     dates, counts = zip(*active_days)
@@ -266,29 +300,6 @@ def display_most_active_days(active_days, top_n, debug):
     if debug:
         plt.show()
 
-def display_most_used_words(top_words, top_n, debug):
-    words, counts = zip(*top_words)
-    plt.figure(figsize=(12, 6))
-
-    polish_curse_words = [
-        'kurw', 'chuj', 'pierdol', 'jeban', 'skurwysyn'
-    ]
-
-    colors = ['red' if any(word.startswith(curse) for curse in polish_curse_words) else 'skyblue' for word in words]
-    bars = plt.bar(words, counts, color=colors)
-    plt.xlabel('Słowa')
-    plt.ylabel('Liczba użyć')
-    plt.title(f'Top {top_n} najczęściej używanych słów')
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    
-    for bar in bars:
-        yval = bar.get_height()
-        plt.text(bar.get_x() + bar.get_width()/2.0, yval + 1, int(yval), ha='center', va='bottom')
-    plt.savefig(f'./results{MONTHNAME}/words.png')
-
-    if debug:
-        plt.show()
 
 def display_average_message_lengths(avg_lengths, debug):
     participants, lengths = zip(*avg_lengths.items())
@@ -364,6 +375,31 @@ ooooooo ooooooooooooooooooooooooooooooooooo ooooooo
     print(result)
     return result
 
+#doesnt work yet
+def save_emoji_ascii_art(ascii_art):
+    if not ascii_art:
+        print("No ASCII art to save")
+        return
+        
+    font_size = 30
+    font_path = "C:/Windows/Fonts/seguiemj.ttf" 
+    font = ImageFont.truetype(font_path, font_size)
+    
+    # Calculate image size
+    img_width = max(font.getlength(line) for line in ascii_art if line)
+    img_height = len(ascii_art) * (font_size + 5)
+    
+    img = Image.new('RGB', (int(img_width + 20), int(img_height + 20)), color='black')
+    draw = ImageDraw.Draw(img)
+    
+    y = 10
+    for line in ascii_art:
+        if line:  
+            draw.text((img_width//5, y), line, font=font, fill='white')
+            y += font_size + 5
+    
+    img.save(f'./results{MONTHNAME}/emoji_art.png')
+    print("Emoji art saved as image")
 
 def pick_chat_to_analyze(folder):
     chats = []
@@ -416,7 +452,10 @@ def process_chat(path, folder):
         top3videos = getTop3Videos(videos)
 
         all_emojis, _ = extract_emojis(data)
-        create_emoji_ascii_art(all_emojis)
+        ascii_art = create_emoji_ascii_art(all_emojis)
+        
+        #doesnt work
+        # save_emoji_ascii_art(ascii_art)
 
         saveTop3Videos(top3videos, folder)
         ###
@@ -424,7 +463,8 @@ def process_chat(path, folder):
         displayTop3(top_3,debug)
         displayTop3Photos(top3photos, folder, debug)
         display_most_active_days(*active_days,debug)
-        display_most_used_words(*top_words,debug)
+        create_word_cloud(*top_words,debug)
+
         display_average_message_lengths(average_message_lengths,debug)
         ###
 
@@ -433,8 +473,8 @@ def process_chat(path, folder):
 
 if __name__ == "__main__":
     debug = False
-    if debug:
-        MONTHNAME = 'TEST'
+    # if debug:
+    MONTHNAME = 'TEST'
 
     os.makedirs(f'./results{MONTHNAME}', exist_ok=True)
 
