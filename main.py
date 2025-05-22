@@ -19,7 +19,10 @@ MONTH = datetime.now() - timedelta(days=30)
 MONTHNAME = MONTH.strftime('%B')
 #from https://raw.githubusercontent.com/bieli/stopwords/master/polish.stopwords.txt
 STOPWORDS_POLISH = set(stopwords.words('polish'))
-plt.style.use('rose-pine-moon')
+try:
+    plt.style.use('rose-pine-moon')
+except OSError:
+    pass
 
 
 def standarize_path(path):
