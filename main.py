@@ -8,9 +8,10 @@ import os
 from collections import Counter
 import glob
 import platform
-import emoji
 from shutil import copyfile
 from nltk.corpus import stopwords
+
+from modules.emojis import extract_emojis, create_emoji_ascii_art, save_emoji_ascii_art
 
 #Olympic podium colors
 COLORS = ['#E6C200','#A7A7AD','#A77044']
@@ -272,7 +273,7 @@ def create_word_cloud(words, top_n, debug):
 
     wc.to_file(f'./results{MONTHNAME}/words.png')
 
-    if True:
+    if debug:
         plt.figure(figsize=(12, 6))
         plt.axis("off")
         plt.imshow(wc)
@@ -321,88 +322,6 @@ def display_average_message_lengths(avg_lengths, debug):
     if debug:
         plt.show()
 
-def unicode_escape(chars, data_dict):
-    return chars.encode('unicode-escape').decode()
-
-def extract_emojis(data):
-    emojis = []
-    emojis_unic = []
-    for message in data['messages']:
-        if 'content' in message:
-            emojis_in_message = [char for char in message['content'] if char in emoji.EMOJI_DATA]
-            emojis_in_message_unicode = [emoji.replace_emoji(e, replace=unicode_escape) for e in emojis_in_message]
-            emojis.extend(emojis_in_message)
-            emojis_unic.extend(emojis_in_message_unicode)
-    return emojis,emojis_unic
-
-def create_emoji_ascii_art(emojis):
-    if not emojis:
-        print("No emojis available to create ASCII art.")
-        return
-
-    fallback_emoji = "⬛"
-    ascii_template = r"""
-                   ooooooooooooo
-              ooooooooooooooooooooooo
-          ooooooooooooooooooooooooooooooo
-       ooooooooooooooooooooooooooooooooooooo
-     ooooooooooooooooooooooooooooooooooooooooo
-   ooooooooooooooooooooooooooooooooooooooooooooo
-  ooooooooooooo  oooooooooooooooo  oooooooooooooo
- oooooooooooo      oooooooooooo      ooooooooooooo
- oooooooooooooo  oooooooooooooooo  ooooooooooooooo
-ooooooooooooooooooooooooooooooooooooooooooooooooooo
-ooooo     ooooooooooooooooooooooooooooooo     ooooo
-ooooooo ooooooooooooooooooooooooooooooooooo ooooooo
- oooooo  ooooooooooooooooooooooooooooooooo  oooooo
- ooooooo  ooooooooooooooooooooooooooooooo  ooooooo
-  ooooooo  ooooooooooooooooooooooooooooo  ooooooo
-   oooooooo  ooooooooooooooooooooooooo  oooooooo
-     ooooooooo  ooooooooooooooooooo  ooooooooo
-       oooooooooo  ooooooooooooo  oooooooooo      
-          oooooooooo           oooooooooo      
-              ooooooooooooooooooooooo          
-                   ooooooooooooo
-    """
-
-    emoji_iter = iter(emojis)  
-    result = ""
-    for char in ascii_template:
-        if char == 'o':
-            result += next(emoji_iter, fallback_emoji)
-        elif char == ' ':
-            result += '  '
-        else:
-            result += char
-    #TODO: saving to png
-    print(result)
-    return result
-
-#doesnt work yet
-def save_emoji_ascii_art(ascii_art):
-    if not ascii_art:
-        print("No ASCII art to save")
-        return
-        
-    font_size = 30
-    font_path = "C:/Windows/Fonts/seguiemj.ttf" 
-    font = ImageFont.truetype(font_path, font_size)
-    
-    # Calculate image size
-    img_width = max(font.getlength(line) for line in ascii_art if line)
-    img_height = len(ascii_art) * (font_size + 5)
-    
-    img = Image.new('RGB', (int(img_width + 20), int(img_height + 20)), color='black')
-    draw = ImageDraw.Draw(img)
-    
-    y = 10
-    for line in ascii_art:
-        if line:  
-            draw.text((img_width//5, y), line, font=font, fill='white')
-            y += font_size + 5
-    
-    img.save(f'./results{MONTHNAME}/emoji_art.png')
-    print("Emoji art saved as image")
 
 def pick_chat_to_analyze(folder):
     chats = []
@@ -454,11 +373,11 @@ def process_chat(path, folder):
         videos = getMostReactedtoVideos(data)
         top3videos = getTop3Videos(videos)
 
-        all_emojis, _ = extract_emojis(data)
+
+        all_emojis = extract_emojis(data)
         ascii_art = create_emoji_ascii_art(all_emojis)
-        
-        #doesnt work
-        # save_emoji_ascii_art(ascii_art)
+        save_emoji_ascii_art(ascii_art, MONTHNAME)
+
 
         saveTop3Videos(top3videos, folder)
         ###
@@ -476,8 +395,8 @@ def process_chat(path, folder):
 
 if __name__ == "__main__":
     debug = False
-    # if debug:
-    MONTHNAME = 'TEST'
+    if debug:
+        MONTHNAME = 'TEST'
 
     os.makedirs(f'./results{MONTHNAME}', exist_ok=True)
 
