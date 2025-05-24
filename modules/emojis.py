@@ -1,8 +1,8 @@
 from PIL import ImageFont, Image, ImageDraw
 import unicodedata
 import emoji
+from .constants import MONTHNAME
 
-# MONTHNAME= 'zzz'
 
 def extract_emojis(data):
     emojis = []
@@ -59,7 +59,7 @@ ooooooo ooooooooooooooooooooooooooooooooooo ooooooo
         lines.append(new_line)
     return lines
 
-def save_emoji_ascii_art(ascii_art, monthname):
+def save_emoji_ascii_art(ascii_art):
     if not ascii_art:
         print("No ASCII art to save")
         return
@@ -91,13 +91,6 @@ def save_emoji_ascii_art(ascii_art, monthname):
             y += font_size + 10  
     
 
-    img.save(f'./results{monthname}/emoji_art.png', format='PNG')
+    img.save(f'./results{MONTHNAME}/emoji_art.png', format='PNG')
 
 
-if "__name__" == '__main__':
-    with open(f'./resultsTEST/emojis.txt', 'r', encoding='UTF-8') as F:
-        emojis = F.readline()
-
-    ascii_art = create_emoji_ascii_art(emojis)
-    print(ascii_art)
-    save_emoji_ascii_art(ascii_art)

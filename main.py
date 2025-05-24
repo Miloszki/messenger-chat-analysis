@@ -1,25 +1,18 @@
 import json
-import re
 from matplotlib import pyplot as plt
-import matplotlib
-from datetime import datetime, timedelta
-from PIL import Image, ImageDraw, ImageFont
 import os
-from collections import Counter
 import glob
-import platform
-from shutil import copyfile
-from nltk.corpus import stopwords
+from tabulate import tabulate
+from tqdm import tqdm
 
 from modules.emojis import extract_emojis, create_emoji_ascii_art, save_emoji_ascii_art
+from modules.links import get_topn_links
+from modules.average_message_length import get_average_message_length, display_average_message_lengths
+from modules.active_days import get_most_active_days, display_most_active_days
+from modules.word_cloud import get_most_used_words, display_word_cloud
+from modules.photos_videos import get_most_reactedto_photos, get_most_reactedto_videos, display_topn_photos, save_topn_videos, get_topn_photos, get_topn_videos
+from modules.constants import IS_WINDOWS, MESSENGER_BUILTIN_MESSAGES, COLORS, MONTHNAME
 
-#Olympic podium colors
-COLORS = ['#E6C200','#A7A7AD','#A77044']
-IS_WINDOWS = platform.system() == 'Windows'
-MONTH = datetime.now() - timedelta(days=30)
-MONTHNAME = MONTH.strftime('%B')
-#from https://raw.githubusercontent.com/bieli/stopwords/master/polish.stopwords.txt
-STOPWORDS_POLISH = set(stopwords.words('polish'))
 try:
     plt.style.use('rose-pine-moon')
 except OSError:
@@ -41,8 +34,9 @@ def init_members(data):
 def count_messages(data, members):
     for message in data['messages']:
 
-        if 'content' in message and 'vote' in message['content']:
-            continue
+        if 'content' in message.keys():
+            if any(keyword in message['content'] for keyword in MESSENGER_BUILTIN_MESSAGES):
+                continue
 
         for member in members:
             if member['name'] == message['sender_name']:
@@ -57,11 +51,9 @@ def standarize(data):
     for participant in data['messages']:
         name = participant['sender_name'].encode('latin1').decode('utf-8')
         participant['sender_name'] = name
-        try:
+        if 'content' in participant.keys():
             mess = participant['content'].encode('latin1').decode('utf-8')
             participant['content'] = mess
-        except KeyError:
-            continue
 
 
 def get_top_3(data):
@@ -78,37 +70,6 @@ def get_top_3(data):
                 output.append({'name': mem['name'], 'num_of_messages': s[1]})
 
     
-def getMostReactedtoPhotos(data):
-    m_list = []
-    for message in data['messages']:
-        try:
-            if message['photos']:
-                m_list.append({'sent_by': message['sender_name'], 'photo': message['photos'][0]['uri'], 'num_reactions': len(message['reactions'])})
-        except KeyError:
-            continue
-    return m_list
-
-
-def getTop3Photos(photo_data):
-    top3 = []
-    sorted_data = sorted(photo_data, reverse=True, key=lambda x: x['num_reactions'])
-    top3 = sorted_data[:3]
-    return top3
-
-def getMostReactedtoVideos(data):
-    m_list = []
-    for message in data['messages']:
-        try:
-            if message['videos']:
-                m_list.append({'sent_by': message['sender_name'], 'video': message['videos'][0]['uri'], 'num_reactions': len(message['reactions'])})
-        except KeyError:
-            continue
-    return m_list
-
-
-def getTop3Videos(video_data):
-    return sorted(video_data, reverse=True, key=lambda x: x['num_reactions'])[:3]
-
 def displayGeneral(members,debug):
     plt.figure(figsize=(12, 6))
     sorted_members = sorted(members, key=lambda x: x['name'])
@@ -127,6 +88,7 @@ def displayGeneral(members,debug):
         yval = bar.get_height()
         plt.text(bar.get_x() + bar.get_width()/2.0, yval + 1, int(yval), ha='center', va='bottom')
     plt.savefig(f'./results{MONTHNAME}/general.png')
+
     if debug:
         plt.show()
 
@@ -134,7 +96,7 @@ def displayTop3(members,debug):
     plt.figure(figsize=(12, 6))
     list_names = [x['name'] for x in members]
     list_mess = [x['num_of_messages']for x in members]
-    bars = plt.bar(list_names, height=list_mess, width=0.3,color=COLORS)
+    bars = plt.bar(list_names, height=list_mess, width=0.3, color=COLORS)
     plt.xticks()
     plt.title('Top 3 najbardziej udzielających się osób')
     plt.xlabel('Uczestnicy')
@@ -145,182 +107,11 @@ def displayTop3(members,debug):
         yval = bar.get_height()
         plt.text(bar.get_x() + bar.get_width()/2.4  , yval + 1, yval)
     plt.savefig(f'./results{MONTHNAME}/top3.png')
+
     if debug:
         plt.show()
 
 
-def displayTop3Photos(photos, folder_path, debug):
-    for i, photo in enumerate(photos):
-        im = Image.open(os.path.join(folder_path, photo['photo']))
-
-        x, y = im.width / 2, 0
-        fillcolor = "white"
-        shadowcolor = "black"
-        text = photo['sent_by'] + ' ' + str(photo['num_reactions'])
-
-        if im.width < 500 or im.height < 500:
-            fontsize = 20
-        else:
-            fontsize = 40
-
-        font_path = "C:/Windows/Fonts/arial.ttf" if IS_WINDOWS else "/System/Library/Fonts/Supplemental/Arial.ttf"
-        font = ImageFont.truetype(font_path, fontsize)
-
-        text_width = font.getlength(text)
-        newim = Image.new('RGB', (im.width, im.height + fontsize), 'black')
-        newim.paste(im, (0, fontsize))
-
-        draw = ImageDraw.Draw(newim)
-        x, y = (im.width - text_width) / 2, 0
-
-        draw.text((x - 1, y - 1), text, font=font, fill=shadowcolor)
-        draw.text((x + 1, y - 1), text, font=font, fill=shadowcolor)
-        draw.text((x - 1, y + 1), text, font=font, fill=shadowcolor)
-        draw.text((x + 1, y + 1), text, font=font, fill=shadowcolor)
-        draw.text((x, y), text, font=font, fill=fillcolor)
-
-        if debug:
-            newim.show()
-
-        try:
-            newim.save(f'./results{MONTHNAME}/top3photos{MONTHNAME}/photo{i + 1}.png')
-        except FileNotFoundError:
-            os.mkdir(f'./results{MONTHNAME}/top3photos{MONTHNAME}/')
-            newim.save(f'./results{MONTHNAME}/top3photos{MONTHNAME}/photo{i + 1}.png')
-
-def saveTop3Videos(videos, folder_path):
-    output_dir = f'./results{MONTHNAME}/top3videos{MONTHNAME}/'
-    os.makedirs(output_dir, exist_ok=True)
-    for i, video in enumerate(videos):
-        source = os.path.join(folder_path, video['video'])
-        ext = os.path.splitext(source)[1] or '.mp4'
-        destination = os.path.join(output_dir, f'video{i + 1}{ext}')
-        try:
-            copyfile(source, destination)
-        except FileNotFoundError:
-            print(f"File not found: {source}")
-
-def GetTopNLinks(data, top_n=15):
-    links = []
-    for message in data['messages']:
-        if 'content' in message and message['content'] and 'reactions' in message:
-            matches = re.findall(r'(?:http|ftp|https):\/\/([\w_-]+(?:\.[\w_-]+)+)([\w.,@?^=%&:\/~+#-]*[\w@?^=%&\/~+#-])', message['content'])
-            if matches:
-                full_links = ["".join(match) for match in matches]
-                for link in full_links:
-                    links.append({'URL': link, 'Sender': message['sender_name'], 'Num_reactions': len(message['reactions'])})
-
-    #Save to file
-    with open(f'./results{MONTHNAME}/links.txt', 'w', encoding='UTF-8') as f:
-        for link in links:
-            reaction_word = "reactions" if link['Num_reactions'] > 1 else "reaction"
-            f.write(f"{link['URL']} (sent by {link['Sender']}): {link['Num_reactions']} {reaction_word}\n")
-
-    topnlinks = links[:top_n]
-    print(f'Returned top {len(topnlinks)} links')
-
-    return topnlinks, len(topnlinks)
-
-def average_message_length(data):
-    lengths = {}
-    for message in data['messages']:
-        sender = message['sender_name']
-        if 'content' in message and 'vote' not in message['content']:
-            length = len(message['content'])
-            if sender in lengths:
-                lengths[sender].append(length)
-            else:
-                lengths[sender] = [length]
-    avg_lengths = {sender: sum(lengths[sender]) / len(lengths[sender]) for sender in lengths}
-    return avg_lengths
-
-def most_active_days(data, top_n=3):
-    dates = [message['timestamp_ms'] for message in data['messages']]
-    date_strings = [datetime.fromtimestamp(date / 1000.0).strftime('%Y-%m-%d') for date in dates]
-    date_counts = Counter(date_strings)
-    return date_counts.most_common(top_n), top_n
-
-def most_used_words(data, top_n=500_000):
-    words = []
-    for message in data['messages']:
-        if 'content' in message.keys():
-            if 'vote' in message['content']:
-                continue
-            content_without_links = re.sub(r'(https?://\S+)', '', message['content'])
-            words.extend(word for word in re.findall(r'\w+', content_without_links.lower()) if word not in STOPWORDS_POLISH)
-    return words, top_n
-
-
-def create_word_cloud(words, top_n, debug):
-    import nltk
-    import numpy as np
-    from wordcloud import WordCloud
-
-    tokens = nltk.word_tokenize(' '.join(words)) 
-    filtered_words = [word for word in tokens if word not in STOPWORDS_POLISH]
-
-    #cat stencil I use for my groupchat
-    mask_file = r'misc\stencils\cat_stencil.png'
-    cat_mask =np.array(Image.open(mask_file))
-
-    wc = WordCloud(background_color='#232136', 
-               max_words=2000,mask=cat_mask, 
-               contour_width=5,
-               min_font_size=6, 
-               contour_color='#232136',
-               colormap='BuPu_r')
-    wc.generate(' '.join(filtered_words))
-
-    wc.to_file(f'./results{MONTHNAME}/words.png')
-
-    if debug:
-        plt.figure(figsize=(12, 6))
-        plt.axis("off")
-        plt.imshow(wc)
-        plt.title(f'Top {top_n} najczęściej używanych słów')
-        plt.show()
-
-def display_most_active_days(active_days, top_n, debug):
-    dates, counts = zip(*active_days)
-    formatted_dates = [datetime.strptime(date, '%Y-%m-%d').strftime('%d-%m-%Y (%A)') for date in dates]
-    days_of_week_polish = {
-        'Monday': 'Poniedziałek', 'Tuesday': 'Wtorek', 'Wednesday': 'Środa',
-        'Thursday': 'Czwartek', 'Friday': 'Piątek', 'Saturday': 'Sobota', 'Sunday': 'Niedziela'
-    }
-    formatted_dates = [date.replace(day, days_of_week_polish[day]) for date in formatted_dates for day in days_of_week_polish if day in date]
-    
-    plt.figure(figsize=(12, 6))
-    bars = plt.bar(formatted_dates, counts, color='skyblue')
-    plt.xlabel('Dni')
-    plt.ylabel('Liczba wiadomości')
-    plt.title(f'Top {top_n} najbardziej aktywnych dni')
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    
-    for bar in bars:
-        yval = bar.get_height()
-        plt.text(bar.get_x() + bar.get_width()/2.0, yval + 1, int(yval), ha='center', va='bottom')
-    plt.savefig(f'./results{MONTHNAME}/active_days.png')
-    if debug:
-        plt.show()
-
-
-def display_average_message_lengths(avg_lengths, debug):
-    participants, lengths = zip(*avg_lengths.items())
-    plt.figure(figsize=(12, 6))
-    bars = plt.bar(participants, lengths, color='skyblue')
-    plt.xlabel('Uczestnicy')
-    plt.ylabel('Średnia długość wiadomości')
-    plt.title('Średnia długość wiadomości na uczestnika')
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    
-    for bar, length in zip(bars, lengths):
-        yval = bar.get_height()
-        plt.text(bar.get_x() + bar.get_width()/2.0, yval + 0.5, f'{int(yval)}', ha='center', va='bottom')
-    plt.savefig(f'./results{MONTHNAME}/avg_lengths.png')
-    if debug:
-        plt.show()
 
 
 def pick_chat_to_analyze(folder):
@@ -332,7 +123,7 @@ def pick_chat_to_analyze(folder):
         chats.append((i+1,chat_name))
         paths.append((i+1,path))
     print(f'Available chats in {folder}:')
-    print(chats)
+    print(tabulate(chats, headers=['Number', 'Name'], tablefmt="outline"))
     choice = int(input('Pick a chat to analyze (0 picks nothing and continues to other available folders if there are any): '))
     if 1 > choice > len(chats):
         print('Wrong choice, exiting')
@@ -353,50 +144,95 @@ def get_facebook_folders():
         exit(1)
     return facebook_folders
 
-
 def process_chat(path, folder):
-    with open(f'{path}/message_1.json') as file:
+   with open(f'{path}/message_1.json') as file:
         data = json.load(file)
 
-        standarize(data)
         members = init_members(data)
-        count_messages(data, members)
 
-        GetTopNLinks(data)
-        top_3 = get_top_3(members)
-        photos = getMostReactedtoPhotos(data)
-        top3photos = getTop3Photos(photos)
-        active_days = most_active_days(data)    
-        top_words = most_used_words(data)
-        average_message_lengths = average_message_length(data)
+        def run_standardization():
+            standarize(data)
+            return "Data standardized"
 
-        videos = getMostReactedtoVideos(data)
-        top3videos = getTop3Videos(videos)
+        
+        def run_member_processing():
+            count_messages(data, members)
+            return members
 
+        def run_general_stats():
+            displayGeneral(members, debug)
+            return "General statistics generated"
 
-        all_emojis = extract_emojis(data)
-        ascii_art = create_emoji_ascii_art(all_emojis)
-        save_emoji_ascii_art(ascii_art, MONTHNAME)
+        def run_links():
+            return get_topn_links(data)
 
+        def run_top_users():
+            top_3 = get_top_3(members)
+            displayTop3(top_3, debug)
+            return "Top users processed"
 
-        saveTop3Videos(top3videos, folder)
-        ###
-        displayGeneral(members,debug)
-        displayTop3(top_3,debug)
-        displayTop3Photos(top3photos, folder, debug)
-        display_most_active_days(*active_days,debug)
-        create_word_cloud(*top_words,debug)
+        def run_media():
+            photos = get_most_reactedto_photos(data)
+            videos = get_most_reactedto_videos(data)
+            top3photos = get_topn_photos(photos) if photos else None
+            top3videos = get_topn_videos(videos) if videos else None
+            if top3photos:
+                display_topn_photos(top3photos, folder, debug)
+            if top3videos:
+                save_topn_videos(top3videos, folder)
+            return "Media processed"
 
-        display_average_message_lengths(average_message_lengths,debug)
-        ###
+        def run_active_days():
+            active_days = get_most_active_days(data)
+            display_most_active_days(*active_days, debug)
+            return "Active days processed"
+
+        def run_word_cloud():
+            words, top_n = get_most_used_words(data)
+            display_word_cloud(words, top_n, debug)
+            return "Word cloud generated"
+
+        def run_message_lengths():
+            lengths = get_average_message_length(data)
+            display_average_message_lengths(lengths, debug)
+            return "Message lengths processed"
+
+        def run_emojis():
+            emojis = extract_emojis(data)
+            if emojis:
+                ascii_art = create_emoji_ascii_art(emojis)
+                save_emoji_ascii_art(ascii_art)
+            return "Emojis processed"
+
+        steps = [
+            ("Standardizing data", run_standardization),
+            ("Processing members", run_member_processing),
+            ("Generating general statistics", run_general_stats),
+            ("Processing links", run_links),
+            ("Processing top users", run_top_users),
+            ("Displaying media", run_media),
+            ("Processing active days", run_active_days),
+            ("Generating word cloud", run_word_cloud),
+            ("Processing message lengths", run_message_lengths),
+            ("Processing emojis", run_emojis)
+        ]
+
+        print("Processing chat data...")
+        with tqdm(total=len(steps), desc="Analysis Progress", bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt}') as pbar:
+            for step_desc, step_func in steps:
+                pbar.set_description(f"Processing: {step_desc}")
+                result = step_func()
+                if debug:
+                    print(f"Step result: {result}")
+                pbar.update(1)
 
         print(f'Data saved in ./results{MONTHNAME} folder')
 
 
 if __name__ == "__main__":
     debug = False
-    if debug:
-        MONTHNAME = 'TEST'
+    # if debug:
+    # MONTHNAME = 'TEST'
 
     os.makedirs(f'./results{MONTHNAME}', exist_ok=True)
 
