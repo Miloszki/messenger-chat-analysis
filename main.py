@@ -7,10 +7,20 @@ from tqdm import tqdm
 
 from modules.emojis import extract_emojis, create_emoji_ascii_art, save_emoji_ascii_art
 from modules.links import get_topn_links
-from modules.average_message_length import get_average_message_length, display_average_message_lengths
+from modules.average_message_length import (
+    get_average_message_length,
+    display_average_message_lengths,
+)
 from modules.active_days import get_most_active_days, display_most_active_days
 from modules.word_cloud import get_most_used_words, display_word_cloud
-from modules.photos_videos import get_most_reactedto_photos, get_most_reactedto_videos, display_topn_photos, save_topn_videos, get_topn_photos, get_topn_videos
+from modules.photos_videos import (
+    get_most_reactedto_photos,
+    get_most_reactedto_videos,
+    display_topn_photos,
+    save_topn_videos,
+    get_topn_photos,
+    get_topn_videos,
+)
 from modules.constants import IS_WINDOWS, MESSENGER_BUILTIN_MESSAGES, COLORS, MONTHNAME
 
 try:
@@ -27,15 +37,17 @@ def init_members(data):
     master = []
     for participant in data['participants']:
         decoded_name = participant['name']
-        master.append(
-            {'name': decoded_name, 'num_of_messages': 0})
+        master.append({'name': decoded_name, 'num_of_messages': 0})
     return master
+
 
 def count_messages(data, members):
     for message in data['messages']:
 
         if 'content' in message.keys():
-            if any(keyword in message['content'] for keyword in MESSENGER_BUILTIN_MESSAGES):
+            if any(
+                keyword in message['content'] for keyword in MESSENGER_BUILTIN_MESSAGES
+            ):
                 continue
 
         for member in members:
@@ -58,44 +70,53 @@ def standarize(data):
 
 def get_top_3(data):
     sorted_mess = [list(mem.values()) for mem in data]
-    output= []
+    output = []
     sorted_mess.sort(reverse=True, key=lambda x: x[1])
 
     for s in sorted_mess:
         for mem in data:
             if len(output) == 3:
                 return output
-            
+
             if mem['name'] == s[0]:
                 output.append({'name': mem['name'], 'num_of_messages': s[1]})
 
-    
-def displayGeneral(members,debug):
+
+def displayGeneral(members, debug):
     plt.figure(figsize=(12, 6))
     sorted_members = sorted(members, key=lambda x: x['name'])
     list_names = [x['name'] for x in sorted_members if x['num_of_messages'] > 15]
-    list_mess = [x['num_of_messages'] for x in sorted_members if x['num_of_messages'] > 15]
+    list_mess = [
+        x['num_of_messages'] for x in sorted_members if x['num_of_messages'] > 15
+    ]
     bars = plt.bar(list_names, list_mess)
     plt.xticks(rotation=50)
     plt.grid(axis='y')
-    plt.title('Liczba wiadomości na osobę (przynajmniej 15 wiadomości)') 
-        
+    plt.title('Liczba wiadomości na osobę (przynajmniej 15 wiadomości)')
+
     plt.xlabel('Uczestnicy')
     plt.ylabel('Liczba wiadomości')
     plt.tight_layout()
-    
+
     for bar in bars:
         yval = bar.get_height()
-        plt.text(bar.get_x() + bar.get_width()/2.0, yval + 1, int(yval), ha='center', va='bottom')
+        plt.text(
+            bar.get_x() + bar.get_width() / 2.0,
+            yval + 1,
+            int(yval),
+            ha='center',
+            va='bottom',
+        )
     plt.savefig(f'./results{MONTHNAME}/general.png')
 
     if debug:
         plt.show()
 
-def displayTop3(members,debug):
+
+def displayTop3(members, debug):
     plt.figure(figsize=(12, 6))
     list_names = [x['name'] for x in members]
-    list_mess = [x['num_of_messages']for x in members]
+    list_mess = [x['num_of_messages'] for x in members]
     bars = plt.bar(list_names, height=list_mess, width=0.3, color=COLORS)
     plt.xticks()
     plt.title('Top 3 najbardziej udzielających się osób')
@@ -105,26 +126,30 @@ def displayTop3(members,debug):
     plt.tight_layout()
     for bar in bars:
         yval = bar.get_height()
-        plt.text(bar.get_x() + bar.get_width()/2.4  , yval + 1, yval)
+        plt.text(bar.get_x() + bar.get_width() / 2.4, yval + 1, yval)
     plt.savefig(f'./results{MONTHNAME}/top3.png')
 
     if debug:
         plt.show()
 
 
-
-
 def pick_chat_to_analyze(folder):
     chats = []
     paths = []
-    for i, file in enumerate(glob.glob(f'./{folder}/your_facebook_activity/messages/inbox/*')):
+    for i, file in enumerate(
+        glob.glob(f'./{folder}/your_facebook_activity/messages/inbox/*')
+    ):
         path = standarize_path(file).split('/')[-1]
         chat_name = path.split('_')[0]
-        chats.append((i+1,chat_name))
-        paths.append((i+1,path))
+        chats.append((i + 1, chat_name))
+        paths.append((i + 1, path))
     print(f'Available chats in {folder}:')
     print(tabulate(chats, headers=['Number', 'Name'], tablefmt="outline"))
-    choice = int(input('Pick a chat to analyze (0 picks nothing and continues to other available folders if there are any): '))
+    choice = int(
+        input(
+            'Pick a chat to analyze (0 picks nothing and continues to other available folders if there are any): '
+        )
+    )
     if 1 > choice > len(chats):
         print('Wrong choice, exiting')
         return None
@@ -132,20 +157,27 @@ def pick_chat_to_analyze(folder):
         print('Picked 0, continuing to other available folders')
         return None
     else:
-        path2 = paths[choice-1][1]
+        path2 = paths[choice - 1][1]
     return path2
-    
+
 
 def get_facebook_folders():
     current_dir = standarize_path(os.getcwd())
-    facebook_folders = [folder for folder in os.listdir(current_dir) if os.path.isdir(folder) and folder.startswith('facebook')]
+    facebook_folders = [
+        folder
+        for folder in os.listdir(current_dir)
+        if os.path.isdir(folder) and folder.startswith('facebook')
+    ]
     if not facebook_folders:
-        print('Did not find any facebook folders, try putting the folder in the same directory as the script')
+        print(
+            'Did not find any facebook folders, try putting the folder in the same directory as the script'
+        )
         exit(1)
     return facebook_folders
 
+
 def process_chat(path, folder):
-   with open(f'{path}/message_1.json') as file:
+    with open(f'{path}/message_1.json') as file:
         data = json.load(file)
 
         members = init_members(data)
@@ -154,7 +186,6 @@ def process_chat(path, folder):
             standarize(data)
             return "Data standardized"
 
-        
         def run_member_processing():
             count_messages(data, members)
             return members
@@ -214,11 +245,15 @@ def process_chat(path, folder):
             ("Processing active days", run_active_days),
             ("Generating word cloud", run_word_cloud),
             ("Processing message lengths", run_message_lengths),
-            ("Processing emojis", run_emojis)
+            ("Processing emojis", run_emojis),
         ]
 
         print("Processing chat data...")
-        with tqdm(total=len(steps), desc="Analysis Progress", bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt}') as pbar:
+        with tqdm(
+            total=len(steps),
+            desc="Analysis Progress",
+            bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt}',
+        ) as pbar:
             for step_desc, step_func in steps:
                 pbar.set_description(f"Processing: {step_desc}")
                 result = step_func()
@@ -232,10 +267,8 @@ def process_chat(path, folder):
 if __name__ == "__main__":
     debug = False
     # if debug:
-    # MONTHNAME = 'TEST'
 
     os.makedirs(f'./results{MONTHNAME}', exist_ok=True)
-
 
     facebook_folders = get_facebook_folders()
 
@@ -244,7 +277,7 @@ if __name__ == "__main__":
         chat_to_analyze = pick_chat_to_analyze(folder)
 
         if chat_to_analyze:
-            path = f'./{folder}/your_facebook_activity/messages/inbox/{chat_to_analyze}' 
+            path = f'./{folder}/your_facebook_activity/messages/inbox/{chat_to_analyze}'
             picked = True
             break
 
@@ -252,7 +285,4 @@ if __name__ == "__main__":
         print('Folder with message_1.json not found')
         exit()
 
-    process_chat(path,folder)
-
-
-        
+    process_chat(path, folder)

@@ -14,6 +14,7 @@ COLORS = ['#E6C200','#A7A7AD','#A77044']
 IS_WINDOWS = platform.system() == 'Windows'
 MONTH = datetime.now() - timedelta(days=30)
 MONTHNAME = MONTH.strftime('%B')
-# MONTHNAME = 'TEST'
 NICE_COLORMAPS =  ['Blues', 'Oranges', 'OrRd', 'PuRd', 'PuBuGn', 'spring', 'autumn', 'winter', 'cool', 'Wistia', 'coolwarm', 'bwr', 'hsv', 'Paired', 'Set1', 'tab10', 'rainbow', 'gist_ncar']
 
+#for testing
+# MONTHNAME = 'TEST'

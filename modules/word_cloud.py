@@ -4,7 +4,7 @@ from wordcloud import WordCloud
 import re
 from PIL import Image
 import matplotlib.pyplot as plt
-from constants import MESSENGER_BUILTIN_MESSAGES, STOPWORDS_POLISH, MONTHNAME, NICE_COLORMAPS
+from .constants import MESSENGER_BUILTIN_MESSAGES, STOPWORDS_POLISH, MONTHNAME, NICE_COLORMAPS
 import random
 
 
@@ -29,8 +29,8 @@ def display_word_cloud(words, top_n, debug):
     filtered_words = [word for word in tokens if word not in STOPWORDS_POLISH]
 
     #cat stencil I use for my groupchat
-    mask_file = r'misc\stencils\cat_stencil.png'
-    cat_mask =np.array(Image.open(mask_file))
+    mask_file = r'misc\stencils\cat_stencil_2k.png'
+    cat_mask = np.array(Image.open(mask_file))
     wc = WordCloud(background_color='#232136', 
             max_words=2000,
             mask=cat_mask, 
@@ -41,7 +41,7 @@ def display_word_cloud(words, top_n, debug):
     wc.generate(' '.join(filtered_words))
 
     
-    wc.to_file(f'./results{MONTHNAME}/kolorki/words_{chosen_colormap}.png')
+    wc.to_file(f'./results{MONTHNAME}/words_{chosen_colormap}.png')
     
     wcsvg = wc.to_svg()
     with open(f'./results{MONTHNAME}/words.svg', "w+", encoding='utf-8') as f:
