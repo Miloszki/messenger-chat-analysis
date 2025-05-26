@@ -1,11 +1,20 @@
 from nltk.corpus import stopwords
 from datetime import datetime, timedelta
 import platform
+import os
+import nltk
 
-
-
+nltk.data.path.append(os.path.join('misc', 'nltk_data'))
 #from https://raw.githubusercontent.com/bieli/stopwords/master/polish.stopwords.txt
-STOPWORDS_POLISH = set(stopwords.words('polish'))
+try:
+    STOPWORDS_POLISH = set(stopwords.words('polish'))
+except OSError:
+    mask_file = os.path.join('misc', 'stencils', 'cat_stencil_2k.png')
+
+    stopwords_file = os.path.join('misc', 'nltk_data', 'corpora', 'stopwords', 'polish')
+    with open(stopwords_file, 'r', encoding='utf-8') as f:
+        STOPWORDS_POLISH = set(f.read().splitlines())
+
 MESSENGER_BUILTIN_MESSAGES = ['set the nickname for', 'voted for', 'changed their vote', 'to your message', 'sent an attachment', 'to the poll', 'multiple updates']
 
 #Olympic podium colors

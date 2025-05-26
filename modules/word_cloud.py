@@ -6,6 +6,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from .constants import MESSENGER_BUILTIN_MESSAGES, STOPWORDS_POLISH, MONTHNAME, NICE_COLORMAPS
 import random
+import os
 
 
 def get_most_used_words(data, top_n=500_000):
@@ -25,11 +26,13 @@ def get_most_used_words(data, top_n=500_000):
 def display_word_cloud(words, top_n, debug):
 
     chosen_colormap = random.choice(NICE_COLORMAPS)
-    tokens = nltk.word_tokenize(' '.join(words)) 
+    tokens = nltk.word_tokenize(' '.join(words))
+
+
     filtered_words = [word for word in tokens if word not in STOPWORDS_POLISH]
 
     #cat stencil I use for my groupchat
-    mask_file = r'misc\stencils\cat_stencil_2k.png'
+    mask_file = os.path.join('misc', 'stencils', 'cat_stencil_2k.png')
     cat_mask = np.array(Image.open(mask_file))
     wc = WordCloud(background_color='#232136', 
             max_words=2000,

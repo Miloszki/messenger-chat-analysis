@@ -1,7 +1,8 @@
 from PIL import ImageFont, Image, ImageDraw
 import unicodedata
 import emoji
-from .constants import MONTHNAME
+from .constants import MONTHNAME, IS_WINDOWS
+import os
 
 
 def extract_emojis(data):
@@ -66,7 +67,11 @@ def save_emoji_ascii_art(ascii_art):
         
     font_size = 30
 
-    font_path = "C:/Windows/Fonts/seguiemj.ttf"
+    font_path = "C:/Windows/Fonts/seguiemj.ttf" if IS_WINDOWS else os.path.join("misc", "fonts", "NotoColorEmoji.ttf")
+    if not IS_WINDOWS:
+        print('Does not yet work on operating systems other than Windows.')
+        font_path = "/System/Library/Fonts/Supplemental/Apple Color Emoji.ttc"
+
     try:
         font = ImageFont.truetype(font_path, font_size)
     except OSError:
