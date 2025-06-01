@@ -180,11 +180,9 @@ def process_chat(path, folder):
     with open(f'{path}/message_1.json') as file:
         data = json.load(file)
 
+        standarize(data)
         members = init_members(data)
 
-        def run_standardization():
-            standarize(data)
-            return "Data standardized"
 
         def run_member_processing():
             count_messages(data, members)
@@ -236,7 +234,6 @@ def process_chat(path, folder):
             return "Emojis processed"
 
         steps = [
-            ("Standardizing data", run_standardization),
             ("Processing members", run_member_processing),
             ("Generating general statistics", run_general_stats),
             ("Processing links", run_links),
