@@ -15,7 +15,7 @@ except OSError:
     with open(stopwords_file, 'r', encoding='utf-8') as f:
         STOPWORDS_POLISH = set(f.read().splitlines())
 
-MESSENGER_BUILTIN_MESSAGES = ['set the nickname for', 'voted for', 'changed their vote', 'to your message', 'sent an attachment', 'to the poll', 'multiple updates']
+MESSENGER_BUILTIN_MESSAGES = ['pinned a message','created a poll',' set the nickname for', 'voted for', 'changed their vote', 'to your message', 'sent an attachment', 'to the poll', 'multiple updates']
 
 #Olympic podium colors
 COLORS = ['#E6C200','#A7A7AD','#A77044']
