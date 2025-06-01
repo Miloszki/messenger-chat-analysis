@@ -89,24 +89,24 @@ def displayGeneral(members, debug):
     list_mess = [
         x['num_of_messages'] for x in sorted_members if x['num_of_messages'] > 15
     ]
-    bars = plt.bar(list_names, list_mess)
-    plt.xticks(rotation=50)
+    bars = plt.barh(list_names, list_mess)
     plt.grid(axis='y')
     plt.title('Liczba wiadomości na osobę (przynajmniej 15 wiadomości)')
 
-    plt.xlabel('Uczestnicy')
-    plt.ylabel('Liczba wiadomości')
-    plt.tight_layout()
+    plt.xlabel('Liczba wiadomości')
+    plt.ylabel('Uczestnicy')
 
     for bar in bars:
-        yval = bar.get_height()
+        xval = bar.get_width()
+        yval = bar.get_y() + bar.get_height() / 2
         plt.text(
-            bar.get_x() + bar.get_width() / 2.0,
-            yval + 1,
-            int(yval),
-            ha='center',
-            va='bottom',
+            xval + 1,
+            yval,
+            int(xval),
+            va='center',
+            ha='left',
         )
+    plt.tight_layout()
     plt.savefig(f'./results{MONTHNAME}/general.png')
 
     if debug:
@@ -117,16 +117,16 @@ def displayTop3(members, debug):
     plt.figure(figsize=(12, 6))
     list_names = [x['name'] for x in members]
     list_mess = [x['num_of_messages'] for x in members]
-    bars = plt.bar(list_names, height=list_mess, width=0.3, color=COLORS)
+    bars = plt.bar(list_names, height=list_mess, width=0.5, color=COLORS)
     plt.xticks()
     plt.title('Top 3 najbardziej udzielających się osób')
     plt.xlabel('Uczestnicy')
     plt.ylabel('Liczba wiadomości')
     plt.grid(axis='y')
-    plt.tight_layout()
     for bar in bars:
         yval = bar.get_height()
         plt.text(bar.get_x() + bar.get_width() / 2.4, yval + 1, yval)
+    plt.tight_layout()
     plt.savefig(f'./results{MONTHNAME}/top3.png')
 
     if debug:
@@ -266,7 +266,6 @@ def process_chat(path, folder):
 
 if __name__ == "__main__":
     debug = False
-    # if debug:
 
     os.makedirs(f'./results{MONTHNAME}', exist_ok=True)
 

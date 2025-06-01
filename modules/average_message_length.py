@@ -20,16 +20,20 @@ def get_average_message_length(data):
 def display_average_message_lengths(avg_lengths, debug):
     participants, lengths = zip(*avg_lengths.items())
     plt.figure(figsize=(12, 6))
-    bars = plt.bar(participants, lengths, color='skyblue')
-    plt.xlabel('Uczestnicy')
-    plt.ylabel('Średnia długość wiadomości')
+    bars = plt.barh(participants, lengths, color='skyblue')
+    plt.xlabel('Średnia długość wiadomości')
+    plt.ylabel('Uczestnicy')
     plt.title('Średnia długość wiadomości na uczestnika')
-    plt.xticks(rotation=45)
-    plt.tight_layout()
     
     for bar, length in zip(bars, lengths):
-        yval = bar.get_height()
-        plt.text(bar.get_x() + bar.get_width()/2.0, yval + 0.5, length, ha='center', va='bottom')
+        plt.text(
+            bar.get_width() + 0.5,                
+            bar.get_y() + bar.get_height() / 2.0, 
+            str(length),
+            ha='left',
+            va='center'
+        )
+    plt.tight_layout()
     plt.savefig(f'./results{MONTHNAME}/avg_lengths.png')
 
     if debug:

@@ -25,12 +25,11 @@ def display_most_active_days(active_days, top_n, debug):
     plt.xlabel('Dni')
     plt.ylabel('Liczba wiadomości')
     plt.title(f'Top {top_n} najbardziej aktywnych dni')
-    plt.xticks(rotation=45)
-    plt.tight_layout()
     
     for bar in bars:
         yval = bar.get_height()
         plt.text(bar.get_x() + bar.get_width()/2.0, yval + 1, int(yval), ha='center', va='bottom')
+    plt.tight_layout()
     plt.savefig(f'./results{MONTHNAME}/active_days.png')
 
     if debug:
