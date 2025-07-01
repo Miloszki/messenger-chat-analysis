@@ -3,6 +3,7 @@ import os
 from shutil import copyfile
 from .constants import MONTHNAME, IS_WINDOWS
 
+
 def get_most_reactedto_photos(data):
     m_list = []
     for message in data['messages']:
@@ -11,7 +12,11 @@ def get_most_reactedto_photos(data):
     return m_list
 
 
-def get_topn_photos(photo_data, top_n=3):
+def get_topn_photos(photo_data, top_n=3, num_participants=1):
+    dynamic_topn = len([x for x in photo_data if x['num_reactions'] > int(num_participants*0.2)])
+    print('photos',dynamic_topn)
+    if dynamic_topn > top_n:
+        top_n = dynamic_topn
     return sorted(photo_data, reverse=True, key=lambda x: x['num_reactions'])[:top_n]
     
 
@@ -23,7 +28,11 @@ def get_most_reactedto_videos(data):
     return m_list
 
 
-def get_topn_videos(video_data, top_n=3):
+def get_topn_videos(video_data, top_n=3, num_participants=1):
+    dynamic_topn = len([x for x in video_data if x['num_reactions'] > int(num_participants*0.2)])
+    print('videos',dynamic_topn)
+    if dynamic_topn > top_n:
+        top_n = dynamic_topn
     return sorted(video_data, reverse=True, key=lambda x: x['num_reactions'])[:top_n]
 
 #==========
