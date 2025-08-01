@@ -22,6 +22,8 @@ from modules.photos_videos import (
     get_topn_videos,
 )
 from modules.constants import IS_WINDOWS, MESSENGER_BUILTIN_MESSAGES, COLORS, MONTHNAME
+from modules.ratio import get_ratio
+
 
 try:
     plt.style.use('rose-pine-moon')
@@ -29,15 +31,24 @@ except OSError:
     pass
 
 
+def save_user_messages_to_txt(data, user_name, output_path="user_messages.txt"):
+    with open(output_path, "w", encoding="utf-8") as f:
+        for message in data['messages']:
+            if message.get('sender_name') == user_name and 'content' in message:
+                f.write(f"{message['content']}\n")
+
+
 def standarize_path(path):
     return path.replace('\\', '/') if IS_WINDOWS else path
 
 
 def init_members(data):
+    global NUM_PARTICIPANTS
     master = []
     for participant in data['participants']:
         decoded_name = participant['name']
         master.append({'name': decoded_name, 'num_of_messages': 0})
+    NUM_PARTICIPANTS = len(master)
     return master
 
 
@@ -183,6 +194,8 @@ def process_chat(path, folder):
         standarize(data)
         members = init_members(data)
 
+        # save_user_messages_to_txt(data, "Olgierd Szymaniak", f'./results{MONTHNAME}/john_doe_messages.txt')
+        # exit()
 
         def run_member_processing():
             count_messages(data, members)
@@ -201,16 +214,25 @@ def process_chat(path, folder):
             return "Top users processed"
 
         def run_media():
+            global top3photos
+            global top3videos
             photos = get_most_reactedto_photos(data)
             videos = get_most_reactedto_videos(data)
-            top3photos = get_topn_photos(photos) if photos else None
-            top3videos = get_topn_videos(videos) if videos else None
+            top3photos = get_topn_photos(photos, num_participants=NUM_PARTICIPANTS) if photos else None
+            top3videos = get_topn_videos(videos, num_participants=NUM_PARTICIPANTS) if videos else None
+
             if top3photos:
                 display_topn_photos(top3photos, folder, debug)
             if top3videos:
                 save_topn_videos(top3videos, folder)
             return "Media processed"
 
+
+        def run_ratio():
+            ratio = get_ratio(data,top3videos, top3photos)
+            # print(ratio)
+            return "Ratio processed"
+        
         def run_active_days():
             active_days = get_most_active_days(data)
             display_most_active_days(*active_days, debug)
@@ -239,6 +261,7 @@ def process_chat(path, folder):
             ("Processing links", run_links),
             ("Processing top users", run_top_users),
             ("Displaying media", run_media),
+            # ("Processing ratio", run_ratio),
             ("Processing active days", run_active_days),
             ("Generating word cloud", run_word_cloud),
             ("Processing message lengths", run_message_lengths),
