@@ -182,6 +182,7 @@ def process_chat(path, folder):
 
         standarize(data)
         members = init_members(data)
+        num_participants = len(members)
 
 
         def run_member_processing():
@@ -203,8 +204,8 @@ def process_chat(path, folder):
         def run_media():
             photos = get_most_reactedto_photos(data)
             videos = get_most_reactedto_videos(data)
-            top3photos = get_topn_photos(photos) if photos else None
-            top3videos = get_topn_videos(videos) if videos else None
+            top3photos = get_topn_photos(photos, num_participants=num_participants) if photos else None
+            top3videos = get_topn_videos(videos, num_participants=num_participants) if videos else None
             if top3photos:
                 display_topn_photos(top3photos, folder, debug)
             if top3videos:
@@ -269,7 +270,7 @@ if __name__ == "__main__":
     facebook_folders = get_facebook_folders()
 
     picked = False
-    for folder in facebook_folders:
+    for folder in facebook_folders[::-1]:
         chat_to_analyze = pick_chat_to_analyze(folder)
 
         if chat_to_analyze:
