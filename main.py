@@ -22,6 +22,8 @@ from modules.photos_videos import (
     get_topn_videos,
 )
 from modules.constants import IS_WINDOWS, MESSENGER_BUILTIN_MESSAGES, COLORS, MONTHNAME
+from modules.correct_interval import check_month_interval, filter_messages_to_one_month
+
 
 try:
     plt.style.use('rose-pine-moon')
@@ -173,7 +175,7 @@ def get_facebook_folders():
             'Did not find any facebook folders, try putting the folder in the same directory as the script'
         )
         exit(1)
-    return facebook_folders
+    return facebook_folders[::-1]
 
 
 def process_chat(path, folder):
@@ -181,6 +183,10 @@ def process_chat(path, folder):
         data = json.load(file)
 
         standarize(data)
+        check_month_interval(data)
+        data = filter_messages_to_one_month(data) 
+        check_month_interval(data)
+
         members = init_members(data)
         num_participants = len(members)
 
@@ -270,7 +276,7 @@ if __name__ == "__main__":
     facebook_folders = get_facebook_folders()
 
     picked = False
-    for folder in facebook_folders[::-1]:
+    for folder in facebook_folders:
         chat_to_analyze = pick_chat_to_analyze(folder)
 
         if chat_to_analyze:
