@@ -1,73 +1,72 @@
-import json
-from matplotlib import pyplot as plt
-import os
 import glob
+import json
+from pathlib import Path
+
+from matplotlib import pyplot as plt
 from tabulate import tabulate
 from tqdm import tqdm
 
-from modules.emojis import extract_emojis, create_emoji_ascii_art, save_emoji_ascii_art
-from modules.links import get_topn_links
+from modules.active_days import display_most_active_days, get_most_active_days
 from modules.average_message_length import (
-    get_average_message_length,
     display_average_message_lengths,
+    get_average_message_length,
 )
-from modules.active_days import get_most_active_days, display_most_active_days
-from modules.word_cloud import get_most_used_words, display_word_cloud
+from modules.constants import COLORS, IS_WINDOWS, MESSENGER_BUILTIN_MESSAGES, MONTHNAME
+from modules.correct_interval import check_month_interval, filter_messages_to_one_month
+from modules.emojis import create_emoji_ascii_art, extract_emojis, save_emoji_ascii_art
+from modules.links import get_topn_links
 from modules.photos_videos import (
+    display_topn_photos,
     get_most_reactedto_photos,
     get_most_reactedto_videos,
-    display_topn_photos,
-    save_topn_videos,
     get_topn_photos,
     get_topn_videos,
+    save_topn_videos,
 )
-from modules.constants import IS_WINDOWS, MESSENGER_BUILTIN_MESSAGES, COLORS, MONTHNAME
-from modules.correct_interval import check_month_interval, filter_messages_to_one_month
-
+from modules.word_cloud import display_word_cloud, get_most_used_words
 
 try:
-    plt.style.use('rose-pine-moon')
+    plt.style.use("rose-pine-moon")
 except OSError:
     pass
 
 
 def standarize_path(path):
-    return path.replace('\\', '/') if IS_WINDOWS else path
+    return path.replace("\\", "/") if IS_WINDOWS else path
 
 
 def init_members(data):
     master = []
-    for participant in data['participants']:
-        decoded_name = participant['name']
-        master.append({'name': decoded_name, 'num_of_messages': 0})
+    for participant in data["participants"]:
+        decoded_name = participant["name"]
+        master.append({"name": decoded_name, "num_of_messages": 0})
     return master
 
 
 def count_messages(data, members):
-    for message in data['messages']:
-
-        if 'content' in message.keys():
+    for message in data["messages"]:
+        if "content" in message.keys():
             if any(
-                keyword in message['content'] for keyword in MESSENGER_BUILTIN_MESSAGES
+                keyword in message["content"] for keyword in MESSENGER_BUILTIN_MESSAGES
             ):
                 continue
 
         for member in members:
-            if member['name'] == message['sender_name']:
-                member['num_of_messages'] += 1
+            if member["name"] == message["sender_name"]:
+                member["num_of_messages"] += 1
 
 
 def standarize(data):
-    for participant in data['participants']:
-        name = participant['name'].encode('latin1').decode('utf-8')
-        participant['name'] = name
+    for participant in data["participants"]:
+        name = participant["name"].encode("latin1").decode("utf-8")
+        participant["name"] = name
 
-    for participant in data['messages']:
-        name = participant['sender_name'].encode('latin1').decode('utf-8')
-        participant['sender_name'] = name
-        if 'content' in participant.keys():
-            mess = participant['content'].encode('latin1').decode('utf-8')
-            participant['content'] = mess
+    for participant in data["messages"]:
+        name = participant["sender_name"].encode("latin1").decode("utf-8")
+        participant["sender_name"] = name
+        if "content" in participant.keys():
+            mess = participant["content"].encode("latin1").decode("utf-8")
+            participant["content"] = mess
 
 
 def get_top_3(data):
@@ -80,23 +79,23 @@ def get_top_3(data):
             if len(output) == 3:
                 return output
 
-            if mem['name'] == s[0]:
-                output.append({'name': mem['name'], 'num_of_messages': s[1]})
+            if mem["name"] == s[0]:
+                output.append({"name": mem["name"], "num_of_messages": s[1]})
 
 
 def displayGeneral(members, debug):
     plt.figure(figsize=(12, 6))
-    sorted_members = sorted(members, key=lambda x: x['name'])
-    list_names = [x['name'] for x in sorted_members if x['num_of_messages'] > 15]
+    sorted_members = sorted(members, key=lambda x: x["name"])
+    list_names = [x["name"] for x in sorted_members if x["num_of_messages"] > 15]
     list_mess = [
-        x['num_of_messages'] for x in sorted_members if x['num_of_messages'] > 15
+        x["num_of_messages"] for x in sorted_members if x["num_of_messages"] > 15
     ]
     bars = plt.barh(list_names, list_mess)
-    plt.grid(axis='y')
-    plt.title('Liczba wiadomości na osobę (przynajmniej 15 wiadomości)')
+    plt.grid(axis="y")
+    plt.title("Liczba wiadomości na osobę (przynajmniej 15 wiadomości)")
 
-    plt.xlabel('Liczba wiadomości')
-    plt.ylabel('Uczestnicy')
+    plt.xlabel("Liczba wiadomości")
+    plt.ylabel("Uczestnicy")
 
     for bar in bars:
         xval = bar.get_width()
@@ -105,11 +104,11 @@ def displayGeneral(members, debug):
             xval + 1,
             yval,
             int(xval),
-            va='center',
-            ha='left',
+            va="center",
+            ha="left",
         )
     plt.tight_layout()
-    plt.savefig(f'./results{MONTHNAME}/general.png')
+    plt.savefig(f"./results{MONTHNAME}/general.png")
 
     if debug:
         plt.show()
@@ -117,19 +116,19 @@ def displayGeneral(members, debug):
 
 def displayTop3(members, debug):
     plt.figure(figsize=(12, 6))
-    list_names = [x['name'] for x in members]
-    list_mess = [x['num_of_messages'] for x in members]
+    list_names = [x["name"] for x in members]
+    list_mess = [x["num_of_messages"] for x in members]
     bars = plt.bar(list_names, height=list_mess, width=0.5, color=COLORS)
     plt.xticks()
-    plt.title('Top 3 najbardziej udzielających się osób')
-    plt.xlabel('Uczestnicy')
-    plt.ylabel('Liczba wiadomości')
-    plt.grid(axis='y')
+    plt.title("Top 3 najbardziej udzielających się osób")
+    plt.xlabel("Uczestnicy")
+    plt.ylabel("Liczba wiadomości")
+    plt.grid(axis="y")
     for bar in bars:
         yval = bar.get_height()
         plt.text(bar.get_x() + bar.get_width() / 2.4, yval + 1, yval)
     plt.tight_layout()
-    plt.savefig(f'./results{MONTHNAME}/top3.png')
+    plt.savefig(f"./results{MONTHNAME}/top3.png")
 
     if debug:
         plt.show()
@@ -139,24 +138,24 @@ def pick_chat_to_analyze(folder):
     chats = []
     paths = []
     for i, file in enumerate(
-        glob.glob(f'./{folder}/your_facebook_activity/messages/inbox/*')
+        glob.glob(f"./{folder}/your_facebook_activity/messages/inbox/*")
     ):
-        path = standarize_path(file).split('/')[-1]
-        chat_name = path.split('_')[0]
+        path = standarize_path(file).split("/")[-1]
+        chat_name = path.split("_")[0]
         chats.append((i + 1, chat_name))
         paths.append((i + 1, path))
-    print(f'Available chats in {folder}:')
-    print(tabulate(chats, headers=['Number', 'Name'], tablefmt="outline"))
+    print(f"Available chats in {folder}:")
+    print(tabulate(chats, headers=["Number", "Name"], tablefmt="outline"))
     choice = int(
         input(
-            'Pick a chat to analyze (0 picks nothing and continues to other available folders if there are any): '
+            "Pick a chat to analyze (0 picks nothing and continues to other available folders if there are any): "
         )
     )
     if 1 > choice > len(chats):
-        print('Wrong choice, exiting')
+        print("Wrong choice, exiting")
         return None
     elif choice == 0:
-        print('Picked 0, continuing to other available folders')
+        print("Picked 0, continuing to other available folders")
         return None
     else:
         path2 = paths[choice - 1][1]
@@ -164,32 +163,31 @@ def pick_chat_to_analyze(folder):
 
 
 def get_facebook_folders():
-    current_dir = standarize_path(os.getcwd())
+    current_dir = Path.cwd()
     facebook_folders = [
-        folder
-        for folder in os.listdir(current_dir)
-        if os.path.isdir(folder) and folder.startswith('facebook')
+        folder.name
+        for folder in current_dir.iterdir()
+        if folder.is_dir() and folder.name.startswith("facebook")
     ]
     if not facebook_folders:
         print(
-            'Did not find any facebook folders, try putting the folder in the same directory as the script'
+            "Did not find any facebook folders, try putting the folder in the same directory as the script"
         )
         exit(1)
     return facebook_folders[::-1]
 
 
 def process_chat(path, folder):
-    with open(f'{path}/message_1.json') as file:
+    with (path / "message_1.json").open() as file:
         data = json.load(file)
 
         standarize(data)
         check_month_interval(data)
-        data = filter_messages_to_one_month(data) 
+        data = filter_messages_to_one_month(data)
         check_month_interval(data)
 
         members = init_members(data)
         num_participants = len(members)
-
 
         def run_member_processing():
             count_messages(data, members)
@@ -210,8 +208,16 @@ def process_chat(path, folder):
         def run_media():
             photos = get_most_reactedto_photos(data)
             videos = get_most_reactedto_videos(data)
-            top3photos = get_topn_photos(photos, num_participants=num_participants) if photos else None
-            top3videos = get_topn_videos(videos, num_participants=num_participants) if videos else None
+            top3photos = (
+                get_topn_photos(photos, num_participants=num_participants)
+                if photos
+                else None
+            )
+            top3videos = (
+                get_topn_videos(videos, num_participants=num_participants)
+                if videos
+                else None
+            )
             if top3photos:
                 display_topn_photos(top3photos, folder, debug)
             if top3videos:
@@ -256,7 +262,7 @@ def process_chat(path, folder):
         with tqdm(
             total=len(steps),
             desc="Analysis Progress",
-            bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt}',
+            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}",
         ) as pbar:
             for step_desc, step_func in steps:
                 pbar.set_description(f"Processing: {step_desc}")
@@ -265,13 +271,15 @@ def process_chat(path, folder):
                     print(f"Step result: {result}")
                 pbar.update(1)
 
-        print(f'Data saved in ./results{MONTHNAME} folder')
+        results_path = Path(f"./results{MONTHNAME}")
+        print(f"Data saved in {results_path} folder")
 
 
 if __name__ == "__main__":
     debug = False
 
-    os.makedirs(f'./results{MONTHNAME}', exist_ok=True)
+    results_dir = Path(f"./results{MONTHNAME}")
+    results_dir.mkdir(exist_ok=True)
 
     facebook_folders = get_facebook_folders()
 
@@ -280,12 +288,18 @@ if __name__ == "__main__":
         chat_to_analyze = pick_chat_to_analyze(folder)
 
         if chat_to_analyze:
-            path = f'./{folder}/your_facebook_activity/messages/inbox/{chat_to_analyze}'
+            path = (
+                Path(folder)
+                / "your_facebook_activity"
+                / "messages"
+                / "inbox"
+                / chat_to_analyze
+            )
             picked = True
             break
 
-    if picked == False:
-        print('Folder with message_1.json not found')
+    if not picked:
+        print("Folder with message_1.json not found")
         exit()
 
     process_chat(path, folder)
