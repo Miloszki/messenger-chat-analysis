@@ -3,8 +3,15 @@ from datetime import datetime
 
 
 def check_month_interval(data) -> bool:
-    last_mess_timestamp = data["messages"][0]["timestamp_ms"]
-    first_mess_timestamp = data["messages"][-1]["timestamp_ms"]
+    global CORRECT_MONTH
+    messages_list = data["messages"]
+
+    num_messages = len(messages_list)
+    CORRECT_MONTH = datetime.fromtimestamp(
+        messages_list[num_messages // 2]["timestamp_ms"] / 1000.0
+    ).month
+    last_mess_timestamp = messages_list[0]["timestamp_ms"]
+    first_mess_timestamp = messages_list[-1]["timestamp_ms"]
 
     first_mess_time = datetime.fromtimestamp(first_mess_timestamp / 1000.0)
     last_mess_time = datetime.fromtimestamp(last_mess_timestamp / 1000.0)
@@ -32,10 +39,6 @@ def filter_messages_to_one_month(data):
     global CORRECT_MONTH
     data_copy = data.copy()
     messages_list = data["messages"]
-    num_messages = len(messages_list)
-    CORRECT_MONTH = datetime.fromtimestamp(
-        messages_list[num_messages // 2]["timestamp_ms"] / 1000.0
-    ).month
 
     filtered_messages = list(filter(is_the_same_month, messages_list))
 
