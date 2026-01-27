@@ -1,5 +1,6 @@
 import glob
 import json
+import statistics
 from pathlib import Path
 
 from matplotlib import pyplot as plt
@@ -96,6 +97,27 @@ def displayGeneral(members, debug):
 
     plt.xlabel("Liczba wiadomości")
     plt.ylabel("Uczestnicy")
+
+    # Calculate mean and median
+    mean_val = statistics.mean(list_mess)
+    median_val = statistics.median(list_mess)
+
+    # Add vertical lines for mean and median
+    plt.axvline(
+        mean_val,
+        color="red",
+        linestyle="--",
+        linewidth=2,
+        label=f"Średnia: {mean_val:.1f}",
+    )
+    plt.axvline(
+        median_val,
+        color="green",
+        linestyle="--",
+        linewidth=2,
+        label=f"Mediana: {median_val:.1f}",
+    )
+    plt.legend()
 
     for bar in bars:
         xval = bar.get_width()
