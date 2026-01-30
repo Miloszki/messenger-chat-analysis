@@ -626,6 +626,6 @@ def save_group_chat_digest(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     digest = build_group_chat_digest(data, cfg=cfg)
-    out_path = out_dir / f"{MONTHNAME}_GROUP_CHAT_DIGEST.txt"
+    out_path = out_dir / "digest.txt"
     out_path.write_text(digest, encoding="utf-8")
     return out_path
