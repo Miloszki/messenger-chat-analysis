@@ -537,9 +537,6 @@ def build_group_chat_digest(data: Dict, cfg: Optional[DigestConfig] = None) -> s
     top = enriched[: cfg.max_threads]
 
     lines: List[str] = []
-    lines.append(f"DIGEST ROZMOWY — {MONTHNAME}")
-    lines.append("=" * 60)
-    lines.append(f"Wykryte wątki (top {len(top)}): {len(enriched)} łącznie\n")
 
     for i, item in enumerate(top, start=1):
         th = item["thread"]
@@ -618,22 +615,6 @@ def build_group_chat_digest(data: Dict, cfg: Optional[DigestConfig] = None) -> s
                 lines.append(
                     f"- {m['author']}: „{_clip(m['text'], cfg.evidence_max_len)}”"
                 )
-
-        lines.append("-" * 60)
-
-    lines.append("\nDOSTRAJANIE")
-    lines.append(
-        f"- Segmentacja: time_gap_min={cfg.time_gap_min}, min_thread_messages={cfg.min_thread_messages}"
-    )
-    lines.append(
-        "- Konflikty: rozszerz cfg.insult_words (i dodaj wyjątki, jeśli to 'żarty')."
-    )
-    lines.append(
-        "- Temat: zwiększ top_keywords / topic_sentences_max albo zmień min_word_len."
-    )
-    lines.append(
-        "- Jeśli keywordów ubywa: to znaczy, że nie wystąpiły w żadnym zdaniu-kandydacie (zgodnie z wymaganiem)."
-    )
 
     return "\n".join(lines)
 

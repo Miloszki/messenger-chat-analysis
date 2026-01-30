@@ -12,6 +12,7 @@ from modules.average_message_length import (
     display_average_message_lengths,
     get_average_message_length,
 )
+from modules.chat_digest import save_group_chat_digest
 from modules.constants import COLORS, IS_WINDOWS, MESSENGER_BUILTIN_MESSAGES, MONTHNAME
 from modules.correct_interval import check_month_interval, filter_messages_to_one_month
 from modules.emojis import create_emoji_ascii_art, extract_emojis, save_emoji_ascii_art
@@ -268,6 +269,27 @@ def process_chat(path, folder):
                 save_emoji_ascii_art(ascii_art)
             return "Emojis processed"
 
+        def run_digest():
+            save_group_chat_digest(data)
+            return "Chat digest processed"
+
+        # def run_summaries():
+        #     from modules.summarize_text import (
+        #         preprocess_json_to_summarize_active_days_format,
+        #         preprocess_json_to_summarize_month_format,
+        #         summarize_month,
+        #         summarize_most_active_days,
+        #     )
+
+        #     txt_month = preprocess_json_to_summarize_month_format(data)
+        #     txt_active_days = preprocess_json_to_summarize_active_days_format(
+        #         active_days, data
+        #     )
+
+        #     summarize_month()
+        #     summarize_most_active_days(txt_active_days)
+        #     return "Summaries processed"
+
         steps = [
             ("Processing members", run_member_processing),
             ("Generating general statistics", run_general_stats),
@@ -275,6 +297,8 @@ def process_chat(path, folder):
             ("Processing top users", run_top_users),
             ("Displaying media", run_media),
             ("Processing active days", run_active_days),
+            # ("Processing summaries", run_summaries),
+            ("Processing chat digest", run_digest),
             ("Generating word cloud", run_word_cloud),
             ("Processing message lengths", run_message_lengths),
             ("Processing emojis", run_emojis),
