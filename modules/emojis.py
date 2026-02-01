@@ -1,5 +1,6 @@
-import os
-import unicodedata
+import math
+import random
+from collections import Counter
 
 import emoji
 from PIL import Image, ImageDraw, ImageFont
@@ -18,88 +19,136 @@ def extract_emojis(data):
     return emojis
 
 
-def create_emoji_ascii_art(emojis):
+def create_emoji_cloud(emojis, max_emojis=50):
+    """
+    Tworzy chmurę emoji - częściej używane emoji są większe.
+    Zwraca listę (emoji, rozmiar, x, y) do narysowania.
+    """
     if not emojis:
-        print("No emojis available to create ASCII art.")
+        print("No emojis available to create cloud.")
+        return []
+
+    # Zlicz częstotliwość emoji
+    emoji_counts = Counter(emojis)
+    top_emojis = emoji_counts.most_common(max_emojis)
+
+    if not top_emojis:
+        return []
+
+    # Skalowanie rozmiarów: min 30px, max 120px
+    max_count = top_emojis[0][1]
+    min_count = top_emojis[-1][1]
+    min_size, max_size = 30, 120
+
+    def scale_size(count):
+        if max_count == min_count:
+            return (min_size + max_size) // 2
+        ratio = (count - min_count) / (max_count - min_count)
+        return int(min_size + ratio * (max_size - min_size))
+
+    # Przygotuj dane z rozmiarami
+    emoji_data = [(e, scale_size(c), c) for e, c in top_emojis]
+
+    # Rozmiar obrazu
+    img_width, img_height = 1200, 800
+    center_x, center_y = img_width // 2, img_height // 2
+
+    # Umieszczanie emoji spiralnie od środka
+    placed = []
+    angle = 0
+    radius = 0
+    angle_step = 0.5
+    radius_step = 8
+
+    for emoji_char, size, count in emoji_data:
+        # Szukaj wolnego miejsca spiralnie
+        placed_ok = False
+        attempts = 0
+
+        while not placed_ok and attempts < 500:
+            x = center_x + int(radius * math.cos(angle)) - size // 2
+            y = center_y + int(radius * math.sin(angle)) - size // 2
+
+            # Sprawdź czy mieści się w obrazie
+            if 10 < x < img_width - size - 10 and 10 < y < img_height - size - 10:
+                # Sprawdź kolizje z już umieszczonymi
+                collision = False
+                for px, py, psize, _, _ in placed:
+                    # Prosty test kolizji prostokątów z marginesem
+                    margin = 5
+                    if (
+                        x < px + psize + margin
+                        and x + size + margin > px
+                        and y < py + psize + margin
+                        and y + size + margin > py
+                    ):
+                        collision = True
+                        break
+
+                if not collision:
+                    placed.append((x, y, size, emoji_char, count))
+                    placed_ok = True
+
+            angle += angle_step
+            if angle > 2 * math.pi:
+                angle -= 2 * math.pi
+                radius += radius_step
+
+            attempts += 1
+
+        if not placed_ok:
+            # Jeśli nie znaleziono miejsca, spróbuj losowo
+            for _ in range(100):
+                x = random.randint(10, img_width - size - 10)
+                y = random.randint(10, img_height - size - 10)
+
+                collision = False
+                for px, py, psize, _, _ in placed:
+                    margin = 5
+                    if (
+                        x < px + psize + margin
+                        and x + size + margin > px
+                        and y < py + psize + margin
+                        and y + size + margin > py
+                    ):
+                        collision = True
+                        break
+
+                if not collision:
+                    placed.append((x, y, size, emoji_char, count))
+                    break
+
+    return placed
+
+
+def save_emoji_cloud(emoji_positions):
+    """Zapisuje chmurę emoji jako PNG."""
+    if not emoji_positions:
+        print("No emoji cloud to save")
         return
-
-    fallback_emoji = "⬛"
-
-    ascii_template = r"""
-                   ooooooooooooo
-              ooooooooooooooooooooooo
-          ooooooooooooooooooooooooooooooo
-       ooooooooooooooooooooooooooooooooooooo
-     ooooooooooooooooooooooooooooooooooooooooo
-   ooooooooooooooooooooooooooooooooooooooooooooo
-  ooooooooooooo  oooooooooooooooo  oooooooooooooo
- oooooooooooo      oooooooooooo      ooooooooooooo
- oooooooooooooo  oooooooooooooooo  ooooooooooooooo
-ooooooooooooooooooooooooooooooooooooooooooooooooooo
-ooooo     ooooooooooooooooooooooooooooooo     ooooo
-ooooooo ooooooooooooooooooooooooooooooooooo ooooooo
- oooooo  ooooooooooooooooooooooooooooooooo  oooooo
- ooooooo  ooooooooooooooooooooooooooooooo  ooooooo
-  ooooooo  ooooooooooooooooooooooooooooo  ooooooo
-   oooooooo  ooooooooooooooooooooooooo  oooooooo
-     ooooooooo  ooooooooooooooooooo  ooooooooo
-       oooooooooo  ooooooooooooo  oooooooooo      
-          oooooooooo           oooooooooo      
-              ooooooooooooooooooooooo          
-                   ooooooooooooo"""
-
-    emoji_iter = iter(emojis)
-    lines = []
-    for line in ascii_template.split("\n"):
-        new_line = ""
-        for char in line:
-            if char == "o":
-                emoji = next(emoji_iter, fallback_emoji)
-                spacer = "  " if unicodedata.east_asian_width(emoji) == "N" else " "
-                new_line += emoji + spacer
-            elif char == " ":
-                new_line += " " * 6
-            else:
-                new_line += char
-        lines.append(new_line)
-    return lines
-
-
-def save_emoji_ascii_art(ascii_art):
-    if not ascii_art:
-        print("No ASCII art to save")
-        return
-
-    font_size = 30
 
     font_path = (
         "C:/Windows/Fonts/seguiemj.ttf"
         if IS_WINDOWS
-        else os.path.join("misc", "fonts", "NotoColorEmoji.ttf")
+        else "/System/Library/Fonts/Supplemental/Apple Color Emoji.ttc"
     )
-    if not IS_WINDOWS:
-        print("Does not yet work on operating systems other than Windows.")
-        font_path = "/System/Library/Fonts/Supplemental/Apple Color Emoji.ttc"
 
-    try:
-        font = ImageFont.truetype(font_path, font_size)
-    except OSError:
-        font = ImageFont.load_default()
-
-    img_width = max(font.getlength(line) for line in ascii_art if line)
-    img_height = len(ascii_art) * (font_size + 10)
-
-    img = Image.new(
-        "RGBA", (int(img_width + 20), int(img_height + 40)), color=(0, 0, 0, 255)
-    )
+    img_width, img_height = 1200, 800
+    img = Image.new("RGBA", (img_width, img_height), color=(15, 15, 25, 255))
     draw = ImageDraw.Draw(img)
 
-    y = 20
+    # Cache fontów dla różnych rozmiarów
+    font_cache = {}
 
-    for line in ascii_art:
-        if line:
-            draw.text((10, y), line, font=font, embedded_color=True)
+    for x, y, size, emoji_char, _ in emoji_positions:
+        if size not in font_cache:
+            try:
+                font_cache[size] = ImageFont.truetype(font_path, size)
+            except OSError:
+                font_cache[size] = ImageFont.load_default()
 
-            y += font_size + 10
+        font = font_cache[size]
+        draw.text((x, y), emoji_char, font=font, embedded_color=True)
 
-    img.save(f"./results{MONTHNAME}/emoji_art.png", format="PNG")
+    img.save(f"./results{MONTHNAME}/emoji_cloud.png", format="PNG")
+    print(f"Saved emoji cloud with {len(emoji_positions)} emojis")
