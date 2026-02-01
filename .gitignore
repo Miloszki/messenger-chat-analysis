@@ -1,8 +1,25 @@
+# OS
 .DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+
+# IDE
+.vscode/
+*.code-workspace
+.idea/
+
+# Project specific
+results*/
+facebook-*/
 *.zip
-/*
-!modules/
-!misc/
-modules/*/
-!*.toml
-!*.lock
+old/
+*.txt
+*.bat
+
+# Test artifacts
+.pytest_cache/
+
