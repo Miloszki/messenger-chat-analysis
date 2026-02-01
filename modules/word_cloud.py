@@ -60,11 +60,7 @@ def display_word_cloud(words, top_n, debug):
     )
     wc.generate(" ".join(filtered_words))
 
-    wc.to_file(f"./results{MONTHNAME}/words_{chosen_colormap}.png")
-
-    wcsvg = wc.to_svg()
-    with open(f"./results{MONTHNAME}/words.svg", "w+", encoding="utf-8") as f:
-        f.write(wcsvg)
+    wc.to_file(f"./results{MONTHNAME}/words.png")
 
     if debug:
         plt.figure(figsize=(12, 6))
