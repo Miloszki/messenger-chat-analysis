@@ -1,4 +1,5 @@
 import os
+import subprocess
 from shutil import copyfile
 
 from PIL import Image, ImageDraw, ImageFont
@@ -94,11 +95,29 @@ def display_topn_photos(photos, folder_path, debug):
         if debug:
             newim.show()
 
+        # Convert to RGB mode if necessary (for JPEG compatibility)
+        if newim.mode in ("RGBA", "P", "LA"):
+            rgb_im = Image.new("RGB", newim.size, (255, 255, 255))
+            if newim.mode == "P":
+                newim = newim.convert("RGBA")
+            rgb_im.paste(newim, mask=newim.split()[-1] if newim.mode in ("RGBA", "LA") else None)
+            newim = rgb_im
+
         try:
-            newim.save(f"./results{MONTHNAME}/top3photos{MONTHNAME}/photo{i + 1}.png")
+            newim.save(
+                f"./results{MONTHNAME}/top3photos{MONTHNAME}/photo{i + 1}.jpg",
+                "JPEG",
+                quality=85,
+                optimize=True,
+            )
         except FileNotFoundError:
             os.mkdir(f"./results{MONTHNAME}/top3photos{MONTHNAME}/")
-            newim.save(f"./results{MONTHNAME}/top3photos{MONTHNAME}/photo{i + 1}.png")
+            newim.save(
+                f"./results{MONTHNAME}/top3photos{MONTHNAME}/photo{i + 1}.jpg",
+                "JPEG",
+                quality=85,
+                optimize=True,
+            )
 
 
 def save_topn_videos(videos, folder_path):
@@ -106,9 +125,47 @@ def save_topn_videos(videos, folder_path):
     os.makedirs(output_dir, exist_ok=True)
     for i, video in enumerate(videos):
         source = os.path.join(folder_path, video["video"])
-        ext = os.path.splitext(source)[1] or ".mp4"
-        destination = os.path.join(output_dir, f"video{i + 1}{ext}")
+        destination = os.path.join(output_dir, f"video{i + 1}.mp4")
         try:
-            copyfile(source, destination)
+            # Compress video using ffmpeg
+            # -crf 28: Quality setting (18-28 is good, higher = smaller file)
+            # -preset fast: Encoding speed/compression ratio
+            # -vf scale: Limit resolution to max 1280 width while maintaining aspect ratio
+            result = subprocess.run(
+                [
+                    "ffmpeg",
+                    "-i",
+                    source,
+                    "-vcodec",
+                    "libx264",
+                    "-crf",
+                    "28",
+                    "-preset",
+                    "fast",
+                    "-vf",
+                    "scale='min(1280,iw)':'min(720,ih)':force_original_aspect_ratio=decrease",
+                    "-acodec",
+                    "aac",
+                    "-b:a",
+                    "128k",
+                    "-y",  # Overwrite output file if exists
+                    destination,
+                ],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                print(f"FFmpeg error for {source}: {result.stderr}")
+                print("Falling back to direct copy...")
+                copyfile(source, destination)
         except FileNotFoundError:
             print(f"File not found: {source}")
+        except Exception as e:
+            print(f"Error processing video {source}: {e}")
+            print("Attempting direct copy as fallback...")
+            try:
+                ext = os.path.splitext(source)[1] or ".mp4"
+                fallback_dest = os.path.join(output_dir, f"video{i + 1}{ext}")
+                copyfile(source, fallback_dest)
+            except Exception as copy_error:
+                print(f"Fallback copy also failed: {copy_error}")
