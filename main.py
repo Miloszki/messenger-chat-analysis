@@ -15,7 +15,7 @@ from modules.average_message_length import (
 from modules.chat_digest import save_group_chat_digest
 from modules.constants import COLORS, IS_WINDOWS, MESSENGER_BUILTIN_MESSAGES, MONTHNAME
 from modules.correct_interval import check_month_interval, filter_messages_to_one_month
-from modules.emojis import create_emoji_ascii_art, extract_emojis, save_emoji_ascii_art
+from modules.emojis import extract_emojis, save_emoji_cloud, create_emoji_cloud
 from modules.links import get_topn_links
 from modules.photos_videos import (
     display_topn_photos,
@@ -265,8 +265,8 @@ def process_chat(path, folder):
         def run_emojis():
             emojis = extract_emojis(data)
             if emojis:
-                ascii_art = create_emoji_ascii_art(emojis)
-                save_emoji_ascii_art(ascii_art)
+                ascii_art = create_emoji_cloud(emojis)
+                save_emoji_cloud(ascii_art)
             return "Emojis processed"
 
         def run_digest():
