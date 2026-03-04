@@ -27,8 +27,9 @@ def get_topn_photos(photo_data, top_n=5, num_participants=1):
     )
     if dynamic_topn > top_n:
         top_n = dynamic_topn
-    print("\nNumber of photos", top_n)
-    return sorted(photo_data, reverse=True, key=lambda x: x["num_reactions"])[:top_n]
+    result = sorted(photo_data, reverse=True, key=lambda x: x["num_reactions"])[:top_n]
+    print("\nNumber of photos", len(result))
+    return result
 
 
 def get_most_reactedto_videos(data):
@@ -51,73 +52,68 @@ def get_topn_videos(video_data, top_n=5, num_participants=1):
     )
     if dynamic_topn > top_n:
         top_n = dynamic_topn
-    print("Number of videos", top_n)
-    return sorted(video_data, reverse=True, key=lambda x: x["num_reactions"])[:top_n]
+    result = sorted(video_data, reverse=True, key=lambda x: x["num_reactions"])[:top_n]
+    print("Number of videos", len(result))
+    return result
 
 
 # ==========
 
 
 def display_topn_photos(photos, folder_path, debug):
-    for i, photo in enumerate(photos):
-        im = Image.open(os.path.join(folder_path, photo["photo"]))
-
-        x, y = im.width / 2, 0
-        fillcolor = "white"
-        shadowcolor = "black"
-        text = photo["sent_by"] + " " + str(photo["num_reactions"])
-
-        if im.width < 500 or im.height < 500:
-            fontsize = 20
-        else:
-            fontsize = 40
-
-        font_path = (
-            "C:/Windows/Fonts/arial.ttf"
-            if IS_WINDOWS
-            else "/System/Library/Fonts/Supplemental/Arial.ttf"
-        )
-        font = ImageFont.truetype(font_path, fontsize)
-
-        text_width = font.getlength(text)
-        newim = Image.new("RGB", (im.width, im.height + fontsize), "black")
-        newim.paste(im, (0, fontsize))
-
-        draw = ImageDraw.Draw(newim)
-        x, y = (im.width - text_width) / 2, 0
-
-        draw.text((x - 1, y - 1), text, font=font, fill=shadowcolor)
-        draw.text((x + 1, y - 1), text, font=font, fill=shadowcolor)
-        draw.text((x - 1, y + 1), text, font=font, fill=shadowcolor)
-        draw.text((x + 1, y + 1), text, font=font, fill=shadowcolor)
-        draw.text((x, y), text, font=font, fill=fillcolor)
-
-        if debug:
-            newim.show()
-
-        # Convert to RGB mode if necessary (for JPEG compatibility)
-        if newim.mode in ("RGBA", "P", "LA"):
-            rgb_im = Image.new("RGB", newim.size, (255, 255, 255))
-            if newim.mode == "P":
-                newim = newim.convert("RGBA")
-            rgb_im.paste(newim, mask=newim.split()[-1] if newim.mode in ("RGBA", "LA") else None)
-            newim = rgb_im
-
+    saved = 0
+    for photo in photos:
+        photo_path = os.path.join(folder_path, photo["photo"])
         try:
+            im = Image.open(photo_path)
+
+            fillcolor = "white"
+            shadowcolor = "black"
+            text = photo["sent_by"] + " " + str(photo["num_reactions"])
+
+            fontsize = 20 if im.width < 500 or im.height < 500 else 40
+
+            font_path = (
+                "C:/Windows/Fonts/arial.ttf"
+                if IS_WINDOWS
+                else "/System/Library/Fonts/Supplemental/Arial.ttf"
+            )
+            font = ImageFont.truetype(font_path, fontsize)
+
+            text_width = font.getlength(text)
+            newim = Image.new("RGB", (im.width, im.height + fontsize), "black")
+            newim.paste(im, (0, fontsize))
+
+            draw = ImageDraw.Draw(newim)
+            x, y = (im.width - text_width) / 2, 0
+
+            draw.text((x - 1, y - 1), text, font=font, fill=shadowcolor)
+            draw.text((x + 1, y - 1), text, font=font, fill=shadowcolor)
+            draw.text((x - 1, y + 1), text, font=font, fill=shadowcolor)
+            draw.text((x + 1, y + 1), text, font=font, fill=shadowcolor)
+            draw.text((x, y), text, font=font, fill=fillcolor)
+
+            if debug:
+                newim.show()
+
+            # Convert to RGB mode if necessary (for JPEG compatibility)
+            if newim.mode in ("RGBA", "P", "LA"):
+                rgb_im = Image.new("RGB", newim.size, (255, 255, 255))
+                if newim.mode == "P":
+                    newim = newim.convert("RGBA")
+                rgb_im.paste(newim, mask=newim.split()[-1] if newim.mode in ("RGBA", "LA") else None)
+                newim = rgb_im
+
+            saved += 1
+            os.makedirs(f"./results{MONTHNAME}/top3photos{MONTHNAME}/", exist_ok=True)
             newim.save(
-                f"./results{MONTHNAME}/top3photos{MONTHNAME}/photo{i + 1}.jpg",
+                f"./results{MONTHNAME}/top3photos{MONTHNAME}/photo{saved}.jpg",
                 "JPEG",
                 quality=85,
                 optimize=True,
             )
-        except FileNotFoundError:
-            os.mkdir(f"./results{MONTHNAME}/top3photos{MONTHNAME}/")
-            newim.save(
-                f"./results{MONTHNAME}/top3photos{MONTHNAME}/photo{i + 1}.jpg",
-                "JPEG",
-                quality=85,
-                optimize=True,
-            )
+        except Exception as e:
+            print(f"Skipping photo {photo_path}: {e}")
 
 
 def save_topn_videos(videos, folder_path):
@@ -159,7 +155,11 @@ def save_topn_videos(videos, folder_path):
                 print("Falling back to direct copy...")
                 copyfile(source, destination)
         except FileNotFoundError:
-            print(f"File not found: {source}")
+            try:
+                print(f"ffmpeg not found on PATH, falling back to direct copy...")
+                copyfile(source, destination)
+            except FileNotFoundError:
+                print(f"Source video not found, skipping: {source}")
         except Exception as e:
             print(f"Error processing video {source}: {e}")
             print("Attempting direct copy as fallback...")
