@@ -35,15 +35,28 @@ The Facebook data export folder must:
 - Contain `message_1.json` in the chat directory
 - Be placed in the same directory as the script
 
+## Getting Your Facebook Data Export
+
+1. Go to [Facebook Settings](https://www.facebook.com/settings) → **Your Facebook information** → **Download your information**
+2. Click **Request a download**
+3. Configure the export:
+   - **Date range** — set to the month you want to analyze
+   - **Format** — select **JSON**
+   - **Media quality** — any (High recommended for photos/videos)
+   - Under **Your information**, deselect everything except **Messages**
+4. Click **Request download** — Facebook will email you when it's ready (usually within minutes to a few hours)
+5. Download and extract the ZIP file — you will get a folder named like `facebook-username-YYYY-MM-DD-xxxxxxxx`
+6. Place that folder in the same directory as `main.py`
+
+> The script automatically finds any **folder** starting with `facebook-` in the current directory.
+> For multiple months, place multiple export folders side by side — the script will detect them all.
+
 ## Installation
 
 1. Clone the repository
 2. Install dependencies:
 
 ```sh
-# Using pip
-pip install -r requirements.txt
-
 # Using uv (recommended)
 uv sync
 ```
