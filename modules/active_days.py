@@ -3,7 +3,7 @@ from datetime import datetime
 
 import matplotlib.pyplot as plt
 
-from .constants import MONTHNAME
+from . import constants
 
 
 def get_most_active_days(data, top_n=3):
@@ -16,6 +16,9 @@ def get_most_active_days(data, top_n=3):
 
 
 def display_most_active_days(active_days, top_n, debug):
+    if not active_days:
+        print("No active days data available, skipping chart")
+        return
     dates, counts = zip(*active_days)
     formatted_dates = [
         datetime.strptime(date, "%Y-%m-%d").strftime("%d-%m-%Y (%A)") for date in dates
@@ -52,7 +55,7 @@ def display_most_active_days(active_days, top_n, debug):
             va="bottom",
         )
     plt.tight_layout()
-    plt.savefig(f"./results{MONTHNAME}/active_days.png")
+    plt.savefig(f"./results{constants.MONTHNAME}/active_days.png")
 
     if debug:
         plt.show()

@@ -1,3 +1,4 @@
+import calendar
 import glob
 import json
 import statistics
@@ -5,7 +6,6 @@ from pathlib import Path
 
 from matplotlib import pyplot as plt
 from tabulate import tabulate
-from tqdm import tqdm
 
 from modules.active_days import display_most_active_days, get_most_active_days
 from modules.average_message_length import (
@@ -13,9 +13,12 @@ from modules.average_message_length import (
     get_average_message_length,
 )
 from modules.chat_digest import save_group_chat_digest
-from modules.constants import COLORS, IS_WINDOWS, MESSENGER_BUILTIN_MESSAGES, MONTHNAME
+import modules.constants as _constants
+import modules.correct_interval as _correct_interval
+from modules.constants import COLORS, IS_WINDOWS, MESSENGER_BUILTIN_MESSAGES
 from modules.correct_interval import check_month_interval, filter_messages_to_one_month
 from modules.emojis import extract_emojis, save_emoji_cloud, create_emoji_cloud
+from modules.helper_funs import standarize
 from modules.links import get_topn_links
 from modules.photos_videos import (
     display_topn_photos,
@@ -46,43 +49,18 @@ def init_members(data):
 
 
 def count_messages(data, members):
+    member_index = {m["name"]: m for m in members}
     for message in data["messages"]:
-        if "content" in message.keys():
-            if any(
-                keyword in message["content"] for keyword in MESSENGER_BUILTIN_MESSAGES
-            ):
+        if "content" in message:
+            if any(keyword in message["content"] for keyword in MESSENGER_BUILTIN_MESSAGES):
                 continue
-
-        for member in members:
-            if member["name"] == message["sender_name"]:
-                member["num_of_messages"] += 1
-
-
-def standarize(data):
-    for participant in data["participants"]:
-        name = participant["name"].encode("latin1").decode("utf-8")
-        participant["name"] = name
-
-    for participant in data["messages"]:
-        name = participant["sender_name"].encode("latin1").decode("utf-8")
-        participant["sender_name"] = name
-        if "content" in participant.keys():
-            mess = participant["content"].encode("latin1").decode("utf-8")
-            participant["content"] = mess
+        sender = message["sender_name"]
+        if sender in member_index:
+            member_index[sender]["num_of_messages"] += 1
 
 
 def get_top_3(data):
-    sorted_mess = [list(mem.values()) for mem in data]
-    output = []
-    sorted_mess.sort(reverse=True, key=lambda x: x[1])
-
-    for s in sorted_mess:
-        for mem in data:
-            if len(output) == 3:
-                return output
-
-            if mem["name"] == s[0]:
-                output.append({"name": mem["name"], "num_of_messages": s[1]})
+    return sorted(data, key=lambda m: m["num_of_messages"], reverse=True)[:3]
 
 
 def displayGeneral(members, debug):
@@ -99,11 +77,14 @@ def displayGeneral(members, debug):
     plt.xlabel("Liczba wiadomości")
     plt.ylabel("Uczestnicy")
 
-    # Calculate mean and median
+    if not list_mess:
+        print("No members with more than 15 messages, skipping general statistics chart")
+        plt.close()
+        return
+
     mean_val = statistics.mean(list_mess)
     median_val = statistics.median(list_mess)
 
-    # Add vertical lines for mean and median
     plt.axvline(
         mean_val,
         color="red",
@@ -131,7 +112,7 @@ def displayGeneral(members, debug):
             ha="left",
         )
     plt.tight_layout()
-    plt.savefig(f"./results{MONTHNAME}/general.png")
+    plt.savefig(f"./results{_constants.MONTHNAME}/general.png")
 
     if debug:
         plt.show()
@@ -151,7 +132,7 @@ def displayTop3(members, debug):
         yval = bar.get_height()
         plt.text(bar.get_x() + bar.get_width() / 2.4, yval + 1, yval)
     plt.tight_layout()
-    plt.savefig(f"./results{MONTHNAME}/top3.png")
+    plt.savefig(f"./results{_constants.MONTHNAME}/top3.png")
 
     if debug:
         plt.show()
@@ -174,7 +155,7 @@ def pick_chat_to_analyze(folder):
             "Pick a chat to analyze (0 picks nothing and continues to other available folders if there are any): "
         )
     )
-    if 1 > choice > len(chats):
+    if choice < 1 or choice > len(chats):
         print("Wrong choice, exiting")
         return None
     elif choice == 0:
@@ -200,132 +181,140 @@ def get_facebook_folders():
     return facebook_folders[::-1]
 
 
-def process_chat(path, folder):
-    with (path / "message_1.json").open() as file:
-        data = json.load(file)
+def process_chat(path, folder, chat_name):
+    message_files = sorted(
+        path.glob("message_*.json"),
+        key=lambda p: int(p.stem.split("_")[1]),
+    )
+    if not message_files:
+        print(f"No message files found in {path}")
+        return
 
-        standarize(data)
-        check_month_interval(data)
-        data = filter_messages_to_one_month(data)
-        check_month_interval(data)
+    with message_files[0].open() as f:
+        data = json.load(f)
+    for msg_file in message_files[1:]:
+        with msg_file.open() as f:
+            page = json.load(f)
+            data["messages"].extend(page["messages"])
 
-        members = init_members(data)
-        num_participants = len(members)
+    standarize(data)
+    check_month_interval(data)
+    data = filter_messages_to_one_month(data)
+    check_month_interval(data)
 
-        def run_member_processing():
-            count_messages(data, members)
-            return members
+    _constants.MONTHNAME = calendar.month_name[_correct_interval.CORRECT_MONTH]
+    Path(f"./results{_constants.MONTHNAME}-{chat_name}").mkdir(exist_ok=True)
 
-        def run_general_stats():
-            displayGeneral(members, debug)
-            return "General statistics generated"
+    members = init_members(data)
+    print(len(members))
+    num_participants = len(members)
 
-        def run_links():
-            return get_topn_links(data)
+    def run_member_processing():
+        count_messages(data, members)
+        return members
 
-        def run_top_users():
-            top_3 = get_top_3(members)
-            displayTop3(top_3, debug)
-            return "Top users processed"
+    def run_general_stats():
+        displayGeneral(members, debug)
+        return "General statistics generated"
 
-        def run_media():
-            photos = get_most_reactedto_photos(data)
-            videos = get_most_reactedto_videos(data)
-            top3photos = (
-                get_topn_photos(photos, num_participants=num_participants)
-                if photos
-                else None
-            )
-            top3videos = (
-                get_topn_videos(videos, num_participants=num_participants)
-                if videos
-                else None
-            )
-            if top3photos:
-                display_topn_photos(top3photos, folder, debug)
-            if top3videos:
-                save_topn_videos(top3videos, folder)
-            return "Media processed"
+    def run_links():
+        return get_topn_links(data)
 
-        def run_active_days():
-            active_days = get_most_active_days(data)
-            display_most_active_days(*active_days, debug)
-            return "Active days processed"
+    def run_top_users():
+        top_3 = get_top_3(members)
+        displayTop3(top_3, debug)
+        return "Top users processed"
 
-        def run_word_cloud():
-            words, top_n = get_most_used_words(data)
-            display_word_cloud(words, top_n, debug)
-            return "Word cloud generated"
+    def run_media():
+        photos = get_most_reactedto_photos(data)
+        videos = get_most_reactedto_videos(data)
+        top3photos = (
+            get_topn_photos(photos, num_participants=num_participants)
+            if photos
+            else None
+        )
+        top3videos = (
+            get_topn_videos(videos, num_participants=num_participants)
+            if videos
+            else None
+        )
+        if top3photos:
+            display_topn_photos(top3photos, folder, debug)
+        if top3videos:
+            save_topn_videos(top3videos, folder)
+        return "Media processed"
 
-        def run_message_lengths():
-            lengths = get_average_message_length(data)
-            display_average_message_lengths(lengths, debug)
-            return "Message lengths processed"
+    def run_active_days():
+        active_days = get_most_active_days(data)
+        display_most_active_days(*active_days, debug)
+        return "Active days processed"
 
-        def run_emojis():
-            emojis = extract_emojis(data)
-            if emojis:
-                ascii_art = create_emoji_cloud(emojis)
-                save_emoji_cloud(ascii_art)
-            return "Emojis processed"
+    def run_word_cloud():
+        words, top_n = get_most_used_words(data)
+        display_word_cloud(words, top_n, debug)
+        return "Word cloud generated"
 
-        def run_digest():
-            save_group_chat_digest(data)
-            return "Chat digest processed"
+    def run_message_lengths():
+        lengths = get_average_message_length(data)
+        display_average_message_lengths(lengths, debug)
+        return "Message lengths processed"
 
-        # def run_summaries():
-        #     from modules.summarize_text import (
-        #         preprocess_json_to_summarize_active_days_format,
-        #         preprocess_json_to_summarize_month_format,
-        #         summarize_month,
-        #         summarize_most_active_days,
-        #     )
+    def run_emojis():
+        emojis = extract_emojis(data)
+        if emojis:
+            ascii_art = create_emoji_cloud(emojis)
+            save_emoji_cloud(ascii_art)
+        return "Emojis processed"
 
-        #     txt_month = preprocess_json_to_summarize_month_format(data)
-        #     txt_active_days = preprocess_json_to_summarize_active_days_format(
-        #         active_days, data
-        #     )
+    def run_digest():
+        save_group_chat_digest(data)
+        return "Chat digest processed"
 
-        #     summarize_month()
-        #     summarize_most_active_days(txt_active_days)
-        #     return "Summaries processed"
+    # def run_summaries():
+    #     from modules.summarize_text import (
+    #         preprocess_json_to_summarize_active_days_format,
+    #         preprocess_json_to_summarize_month_format,
+    #         summarize_month,
+    #         summarize_most_active_days,
+    #     )
 
-        steps = [
-            ("Processing members", run_member_processing),
-            ("Generating general statistics", run_general_stats),
-            ("Processing links", run_links),
-            ("Processing top users", run_top_users),
-            ("Displaying media", run_media),
-            ("Processing active days", run_active_days),
-            # ("Processing summaries", run_summaries),
-            ("Processing chat digest", run_digest),
-            ("Generating word cloud", run_word_cloud),
-            ("Processing message lengths", run_message_lengths),
-            ("Processing emojis", run_emojis),
-        ]
+    #     txt_month = preprocess_json_to_summarize_month_format(data)
+    #     txt_active_days = preprocess_json_to_summarize_active_days_format(
+    #         active_days, data
+    #     )
 
-        print("Processing chat data...")
-        with tqdm(
-            total=len(steps),
-            desc="Analysis Progress",
-            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}",
-        ) as pbar:
-            for step_desc, step_func in steps:
-                pbar.set_description(f"Processing: {step_desc}")
-                result = step_func()
-                if debug:
-                    print(f"Step result: {result}")
-                pbar.update(1)
+    #     summarize_month()
+    #     summarize_most_active_days(txt_active_days)
+    #     return "Summaries processed"
 
-        results_path = Path(f"./results{MONTHNAME}")
-        print(f"Data saved in {results_path} folder")
+    steps = [
+        ("Processing members", run_member_processing),
+        ("Generating general statistics", run_general_stats),
+        ("Processing links", run_links),
+        ("Processing top users", run_top_users),
+        ("Displaying media", run_media),
+        ("Processing active days", run_active_days),
+        # ("Processing summaries", run_summaries),
+        ("Processing chat digest", run_digest),
+        ("Generating word cloud", run_word_cloud),
+        ("Processing message lengths", run_message_lengths),
+        ("Processing emojis", run_emojis),
+    ]
+
+    total = len(steps)
+    print(f"Processing chat data... ({total} steps)")
+    for i, (step_desc, step_func) in enumerate(steps, 1):
+        print(f"[{i}/{total}] {step_desc}...")
+        result = step_func()
+        if debug:
+            print(f"        → {result}")
+
+    results_path = Path(f"./results{_constants.MONTHNAME}")
+    print(f"Data saved in {results_path} folder")
 
 
 if __name__ == "__main__":
     debug = False
-
-    results_dir = Path(f"./results{MONTHNAME}")
-    results_dir.mkdir(exist_ok=True)
 
     facebook_folders = get_facebook_folders()
 
@@ -348,4 +337,4 @@ if __name__ == "__main__":
         print("Folder with message_1.json not found")
         exit()
 
-    process_chat(path, folder)
+    process_chat(path, folder, chat_to_analyze.split("_")[0])

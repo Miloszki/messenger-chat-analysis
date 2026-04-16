@@ -1,13 +1,14 @@
 import matplotlib.pyplot as plt
 
-from .constants import MESSENGER_BUILTIN_MESSAGES, MONTHNAME
+from . import constants
+from .constants import MESSENGER_BUILTIN_MESSAGES
 
 
 def get_average_message_length(data):
     lengths = {}
     for message in data["messages"]:
         sender = message["sender_name"]
-        if "content" in message.keys():
+        if "content" in message:
             if any(
                 keyword in message["content"] for keyword in MESSENGER_BUILTIN_MESSAGES
             ):
@@ -40,7 +41,7 @@ def display_average_message_lengths(avg_lengths, debug):
             va="center",
         )
     plt.tight_layout()
-    plt.savefig(f"./results{MONTHNAME}/avg_lengths.png")
+    plt.savefig(f"./results{constants.MONTHNAME}/avg_lengths.png")
 
     if debug:
         plt.show()

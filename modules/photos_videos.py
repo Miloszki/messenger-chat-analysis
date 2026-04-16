@@ -4,20 +4,23 @@ from shutil import copyfile
 
 from PIL import Image, ImageDraw, ImageFont
 
-from .constants import IS_WINDOWS, MONTHNAME
+from . import constants
+from .constants import IS_WINDOWS
 
 
 def get_most_reactedto_photos(data):
     m_list = []
     for message in data["messages"]:
-        if "photos" in message.keys() and "reactions" in message.keys():
-            m_list.append(
-                {
-                    "sent_by": message["sender_name"],
-                    "photo": message["photos"][0]["uri"],
-                    "num_reactions": len(message["reactions"]),
-                }
-            )
+        if "photos" in message and "reactions" in message:
+            num_reactions = len(message["reactions"])
+            for photo in message["photos"]:
+                m_list.append(
+                    {
+                        "sent_by": message["sender_name"],
+                        "photo": photo["uri"],
+                        "num_reactions": num_reactions,
+                    }
+                )
     return m_list
 
 
@@ -35,14 +38,16 @@ def get_topn_photos(photo_data, top_n=5, num_participants=1):
 def get_most_reactedto_videos(data):
     m_list = []
     for message in data["messages"]:
-        if "videos" in message.keys() and "reactions" in message.keys():
-            m_list.append(
-                {
-                    "sent_by": message["sender_name"],
-                    "video": message["videos"][0]["uri"],
-                    "num_reactions": len(message["reactions"]),
-                }
-            )
+        if "videos" in message and "reactions" in message:
+            num_reactions = len(message["reactions"])
+            for video in message["videos"]:
+                m_list.append(
+                    {
+                        "sent_by": message["sender_name"],
+                        "video": video["uri"],
+                        "num_reactions": num_reactions,
+                    }
+                )
     return m_list
 
 
@@ -73,12 +78,17 @@ def display_topn_photos(photos, folder_path, debug):
 
             fontsize = 20 if im.width < 500 or im.height < 500 else 40
 
-            font_path = (
+            _bundled = os.path.join("misc", "fonts", "NotoColorEmoji-Regular.ttf")
+            _system = (
                 "C:/Windows/Fonts/arial.ttf"
                 if IS_WINDOWS
                 else "/System/Library/Fonts/Supplemental/Arial.ttf"
             )
-            font = ImageFont.truetype(font_path, fontsize)
+            font_path = _bundled if os.path.exists(_bundled) else _system
+            try:
+                font = ImageFont.truetype(font_path, fontsize)
+            except OSError:
+                font = ImageFont.load_default()
 
             text_width = font.getlength(text)
             newim = Image.new("RGB", (im.width, im.height + fontsize), "black")
@@ -96,7 +106,6 @@ def display_topn_photos(photos, folder_path, debug):
             if debug:
                 newim.show()
 
-            # Convert to RGB mode if necessary (for JPEG compatibility)
             if newim.mode in ("RGBA", "P", "LA"):
                 rgb_im = Image.new("RGB", newim.size, (255, 255, 255))
                 if newim.mode == "P":
@@ -105,9 +114,9 @@ def display_topn_photos(photos, folder_path, debug):
                 newim = rgb_im
 
             saved += 1
-            os.makedirs(f"./results{MONTHNAME}/top3photos{MONTHNAME}/", exist_ok=True)
+            os.makedirs(f"./results{constants.MONTHNAME}/top3photos{constants.MONTHNAME}/", exist_ok=True)
             newim.save(
-                f"./results{MONTHNAME}/top3photos{MONTHNAME}/photo{saved}.jpg",
+                f"./results{constants.MONTHNAME}/top3photos{constants.MONTHNAME}/photo{saved}.jpg",
                 "JPEG",
                 quality=85,
                 optimize=True,
@@ -117,7 +126,7 @@ def display_topn_photos(photos, folder_path, debug):
 
 
 def save_topn_videos(videos, folder_path):
-    output_dir = f"./results{MONTHNAME}/top3videos{MONTHNAME}/"
+    output_dir = f"./results{constants.MONTHNAME}/top3videos{constants.MONTHNAME}/"
     os.makedirs(output_dir, exist_ok=True)
     for i, video in enumerate(videos):
         source = os.path.join(folder_path, video["video"])
@@ -139,7 +148,7 @@ def save_topn_videos(videos, folder_path):
                     "-preset",
                     "fast",
                     "-vf",
-                    "scale='min(1280,iw)':'min(720,ih)':force_original_aspect_ratio=decrease",
+                    "scale='min(1280,iw)':'min(720,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2",
                     "-acodec",
                     "aac",
                     "-b:a",

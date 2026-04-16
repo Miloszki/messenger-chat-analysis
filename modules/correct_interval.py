@@ -1,6 +1,8 @@
 import calendar
 from datetime import datetime
 
+CORRECT_MONTH: int = 0
+
 
 def check_month_interval(data) -> bool:
     global CORRECT_MONTH

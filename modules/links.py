@@ -1,15 +1,15 @@
 import re
 
-from .constants import MONTHNAME
+from . import constants
 
 
 def get_topn_links(data, top_n=15):
     links = []
     for message in data["messages"]:
         if (
-            "content" in message.keys()
+            "content" in message
             and message["content"]
-            and "reactions" in message.keys()
+            and "reactions" in message
         ):
             matches = re.findall(
                 r"(?:http|ftp|https):\/\/([\w_-]+(?:\.[\w_-]+)+)([\w.,@?^=%&:\/~+#-]*[\w@?^=%&\/~+#-])",
@@ -26,13 +26,14 @@ def get_topn_links(data, top_n=15):
                         }
                     )
 
-    with open(f"./results{MONTHNAME}/links.txt", "w", encoding="UTF-8") as f:
+    with open(f"./results{constants.MONTHNAME}/links.txt", "w", encoding="UTF-8") as f:
         for link in links:
             reaction_word = "reactions" if link["Num_reactions"] > 1 else "reaction"
             f.write(
                 f"{link['URL']} (sent by {link['Sender']}): {link['Num_reactions']} {reaction_word}\n"
             )
 
+    links.sort(key=lambda x: x["Num_reactions"], reverse=True)
     topnlinks = links[:top_n]
 
     return topnlinks, len(topnlinks)

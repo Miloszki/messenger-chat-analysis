@@ -7,7 +7,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-from .constants import MESSENGER_BUILTIN_MESSAGES, MONTHNAME, STOPWORDS_POLISH
+from . import constants
+from .constants import MESSENGER_BUILTIN_MESSAGES, STOPWORDS_POLISH
 
 
 # ----------------------------
@@ -85,9 +86,9 @@ class DigestConfig:
         "mialem",
         "miałam",
         "mialam",
-        "mnie",
-        "mi",
-        "ja ",
+        # Fix #19: removed "mnie" and "mi" (too common, cause mass false positives);
+        # removed trailing space from "ja" (failed to match "ja" at end of sentence)
+        "ja",
         "moje",
         "moja",
     )
@@ -622,7 +623,7 @@ def build_group_chat_digest(data: Dict, cfg: Optional[DigestConfig] = None) -> s
 def save_group_chat_digest(
     data: Dict, out_dir: Optional[Path] = None, cfg: Optional[DigestConfig] = None
 ) -> Path:
-    out_dir = out_dir or Path(f"./results{MONTHNAME}")
+    out_dir = out_dir or Path(f"./results{constants.MONTHNAME}")
     out_dir.mkdir(parents=True, exist_ok=True)
 
     digest = build_group_chat_digest(data, cfg=cfg)

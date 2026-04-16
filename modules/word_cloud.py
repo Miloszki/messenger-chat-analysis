@@ -3,14 +3,13 @@ import random
 import re
 
 import matplotlib.pyplot as plt
-import nltk
 import numpy as np
 from PIL import Image
 from wordcloud import WordCloud
 
+from . import constants
 from .constants import (
     MESSENGER_BUILTIN_MESSAGES,
-    MONTHNAME,
     NICE_COLORMAPS,
     STOPWORDS_POLISH,
 )
@@ -19,7 +18,7 @@ from .constants import (
 def get_most_used_words(data, top_n=500_000):
     words = []
     for message in data["messages"]:
-        if "content" in message.keys():
+        if "content" in message:
             if any(
                 keyword in message["content"] for keyword in MESSENGER_BUILTIN_MESSAGES
             ):
@@ -42,9 +41,6 @@ def get_most_used_words(data, top_n=500_000):
 
 def display_word_cloud(words, top_n, debug):
     chosen_colormap = random.choice(NICE_COLORMAPS)
-    tokens = nltk.word_tokenize(" ".join(words))
-
-    filtered_words = [word for word in tokens if word not in STOPWORDS_POLISH]
 
     # cat stencil I use for my groupchat
     mask_file = os.path.join("misc", "stencils", "cat_stencil_2k.png")
@@ -58,9 +54,9 @@ def display_word_cloud(words, top_n, debug):
         contour_color="#232136",
         colormap=chosen_colormap,
     )
-    wc.generate(" ".join(filtered_words))
+    wc.generate(" ".join(words))
 
-    wc.to_file(f"./results{MONTHNAME}/words.png")
+    wc.to_file(f"./results{constants.MONTHNAME}/words.png")
 
     if debug:
         plt.figure(figsize=(12, 6))
