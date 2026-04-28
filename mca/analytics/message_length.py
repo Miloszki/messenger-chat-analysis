@@ -41,7 +41,7 @@ def display_average_message_lengths(avg_lengths, debug):
             va="center",
         )
     plt.tight_layout()
-    plt.savefig(f"./results{constants.MONTHNAME}/avg_lengths.png")
+    plt.savefig(f"{constants.results_dir()}/avg_lengths.png")
 
     if debug:
         plt.show()

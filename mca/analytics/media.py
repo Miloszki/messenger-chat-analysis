@@ -79,14 +79,17 @@ def display_topn_photos(photos, folder_path, debug):
             fontsize = 20 if im.width < 500 or im.height < 500 else 40
 
             _bundled = os.path.join("misc", "fonts", "NotoColorEmoji-Regular.ttf")
-            _system = (
-                "C:/Windows/Fonts/arial.ttf"
-                if IS_WINDOWS
-                else "/System/Library/Fonts/Supplemental/Arial.ttf"
-            )
-            font_path = _bundled if os.path.exists(_bundled) else _system
+            _candidates = [
+                _bundled,
+                "C:/Windows/Fonts/arial.ttf",
+                "/System/Library/Fonts/Supplemental/Arial.ttf",
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+                "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+            ]
+            font_path = next((p for p in _candidates if os.path.exists(p)), None)
             try:
-                font = ImageFont.truetype(font_path, fontsize)
+                font = ImageFont.truetype(font_path, fontsize) if font_path else ImageFont.load_default()
             except OSError:
                 font = ImageFont.load_default()
 
@@ -114,9 +117,9 @@ def display_topn_photos(photos, folder_path, debug):
                 newim = rgb_im
 
             saved += 1
-            os.makedirs(f"./results{constants.MONTHNAME}/top3photos{constants.MONTHNAME}/", exist_ok=True)
+            os.makedirs(f"{constants.results_dir()}/top3photos/", exist_ok=True)
             newim.save(
-                f"./results{constants.MONTHNAME}/top3photos{constants.MONTHNAME}/photo{saved}.jpg",
+                f"{constants.results_dir()}/top3photos/photo{saved}.jpg",
                 "JPEG",
                 quality=85,
                 optimize=True,
@@ -126,7 +129,7 @@ def display_topn_photos(photos, folder_path, debug):
 
 
 def save_topn_videos(videos, folder_path):
-    output_dir = f"./results{constants.MONTHNAME}/top3videos{constants.MONTHNAME}/"
+    output_dir = f"{constants.results_dir()}/top3videos/"
     os.makedirs(output_dir, exist_ok=True)
     for i, video in enumerate(videos):
         source = os.path.join(folder_path, video["video"])
@@ -161,7 +164,7 @@ def save_topn_videos(videos, folder_path):
                 copyfile(source, destination)
         except FileNotFoundError:
             try:
-                print(f"ffmpeg not found on PATH, falling back to direct copy...")
+                print("ffmpeg not found on PATH, falling back to direct copy...")
                 copyfile(source, destination)
             except FileNotFoundError:
                 print(f"Source video not found, skipping: {source}")

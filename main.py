@@ -2,6 +2,7 @@ import calendar
 import glob
 import json
 import statistics
+from datetime import datetime
 from pathlib import Path
 
 from matplotlib import pyplot as plt
@@ -28,6 +29,11 @@ from mca.core.interval import check_month_interval, filter_messages_to_one_month
 from mca.core.normalizer import standarize
 from mca.ml.label_days import display_label_calendar, label_days
 from mca.nlp.digest import save_group_chat_digest
+from mca.nlp.summarize_ollama import (
+    save_group_chat_digest as save_ollama_digest,
+    summarize_month as ollama_summarize_month,
+    summarize_most_active_days as ollama_summarize_active_days,
+)
 from mca.viz.emojis import create_emoji_cloud, extract_emojis, save_emoji_cloud
 from mca.viz.word_cloud import display_word_cloud, get_most_used_words
 
@@ -251,6 +257,7 @@ def process_chat(path, folder, chat_name):
         return "Media processed"
 
     _day_labels: dict = {}
+    _active_days: tuple = ()
 
     def run_label_days():
         result = label_days(data)
@@ -259,8 +266,9 @@ def process_chat(path, folder, chat_name):
         return "Label days processed"
 
     def run_active_days():
-        active_days = get_most_active_days(data)
-        display_most_active_days(*active_days, debug, day_labels=_day_labels or None)
+        nonlocal _active_days
+        _active_days = get_most_active_days(data)
+        display_most_active_days(*_active_days, debug, day_labels=_day_labels or None)
         return "Active days processed"
 
     def run_word_cloud():
@@ -281,25 +289,35 @@ def process_chat(path, folder, chat_name):
         return "Emojis processed"
 
     def run_digest():
-        save_group_chat_digest(data)
+        save_group_chat_digest(data, out_dir=Path(_constants.results_dir()))
         return "Chat digest processed"
 
-    # def run_summaries():
-    #     from mca.nlp.summarize import (
-    #         preprocess_json_to_summarize_active_days_format,
-    #         preprocess_json_to_summarize_month_format,
-    #         summarize_month,
-    #         summarize_most_active_days,
-    #     )
+    def run_ollama_digest():
+        save_ollama_digest(data, out_dir=Path(_constants.results_dir()))
+        return "Ollama chat digest processed"
 
-    #     txt_month = preprocess_json_to_summarize_month_format(data)
-    #     txt_active_days = preprocess_json_to_summarize_active_days_format(
-    #         active_days, data
-    #     )
+    def run_ollama_month_summary():
+        summary = ollama_summarize_month(data)
+        out = Path(_constants.results_dir()) / "month_summary_ollama.txt"
+        out.write_text(summary.summary, encoding="utf-8")
+        return f"Ollama month summary saved to {out}"
 
-    #     summarize_month()
-    #     summarize_most_active_days(txt_active_days)
-    #     return "Summaries processed"
+    def run_ollama_active_days_summary():
+        if not _active_days:
+            return "Active days not computed yet, skipping"
+        top_dates = [date for date, _ in _active_days[0]]
+        messages_by_date: dict = {date: [] for date in top_dates}
+        for m in data["messages"]:
+            if "content" not in m or not m["content"]:
+                continue
+            day = datetime.fromtimestamp(m["timestamp_ms"] / 1000).strftime("%Y-%m-%d")
+            if day in messages_by_date:
+                messages_by_date[day].append(f"{m['sender_name']}: {m['content']}\n\n")
+        summaries = ollama_summarize_active_days(messages_by_date)
+        out_dir = Path(_constants.results_dir())
+        for s in summaries:
+            (out_dir / f"active_day_{s.date}_summary.txt").write_text(s.summary, encoding="utf-8")
+        return f"Ollama active day summaries saved ({len(summaries)} files)"
 
     steps = [
         ("Processing members", run_member_processing),
@@ -309,8 +327,10 @@ def process_chat(path, folder, chat_name):
         ("Displaying media", run_media),
         ("Processing day labeling", run_label_days),
         ("Processing active days", run_active_days),
-        # ("Processing summaries", run_summaries),
         ("Processing chat digest", run_digest),
+        ("Processing ollama chat digest", run_ollama_digest),
+        ("Processing ollama month summary", run_ollama_month_summary),
+        ("Processing ollama active day summaries", run_ollama_active_days_summary),
         ("Generating word cloud", run_word_cloud),
         ("Processing message lengths", run_message_lengths),
         ("Processing emojis", run_emojis),

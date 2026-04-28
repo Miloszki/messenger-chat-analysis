@@ -138,5 +138,5 @@ def save_emoji_cloud(emoji_positions):
         font = font_cache[size]
         draw.text((x, y), emoji_char, font=font, embedded_color=True)
 
-    img.save(f"./results{constants.MONTHNAME}/emoji_cloud.png", format="PNG")
+    img.save(f"{constants.results_dir()}/emoji_cloud.png", format="PNG")
     print(f"Saved emoji cloud with {len(emoji_positions)} emojis")

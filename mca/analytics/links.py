@@ -6,27 +6,24 @@ from ..config import constants
 def get_topn_links(data, top_n=15):
     links = []
     for message in data["messages"]:
-        if (
-            "content" in message
-            and message["content"]
-            and "reactions" in message
-        ):
-            matches = re.findall(
-                r"(?:http|ftp|https):\/\/([\w_-]+(?:\.[\w_-]+)+)([\w.,@?^=%&:\/~+#-]*[\w@?^=%&\/~+#-])",
-                message["content"],
-            )
-            if matches:
-                full_links = ["".join(match) for match in matches]
-                for link in full_links:
-                    links.append(
-                        {
-                            "URL": link,
-                            "Sender": message["sender_name"],
-                            "Num_reactions": len(message["reactions"]),
-                        }
-                    )
+        if not message.get("content"):
+            continue
+        matches = re.findall(
+            r"(?:http|ftp|https):\/\/([\w_-]+(?:\.[\w_-]+)+)([\w.,@?^=%&:\/~+#-]*[\w@?^=%&\/~+#-])",
+            message["content"],
+        )
+        if matches:
+            num_reactions = len(message.get("reactions", []))
+            for link in ["".join(match) for match in matches]:
+                links.append(
+                    {
+                        "URL": link,
+                        "Sender": message["sender_name"],
+                        "Num_reactions": num_reactions,
+                    }
+                )
 
-    with open(f"./results{constants.MONTHNAME}/links.txt", "w", encoding="UTF-8") as f:
+    with open(f"{constants.results_dir()}/links.txt", "w", encoding="UTF-8") as f:
         for link in links:
             reaction_word = "reactions" if link["Num_reactions"] > 1 else "reaction"
             f.write(
