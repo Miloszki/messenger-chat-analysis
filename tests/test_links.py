@@ -15,7 +15,7 @@ class TestGetTopnLinks:
             with patch("mca.config.constants.MONTHNAME", "TestMonth"):
                 results_path = os.path.join(tmpdir, "resultsTestMonth")
                 os.makedirs(results_path, exist_ok=True)
-                with patch("modules.links.open", create=True) as mock_open:
+                with patch("builtins.open", create=True) as mock_open:
                     mock_open.return_value.__enter__ = lambda s: s
                     mock_open.return_value.__exit__ = lambda s, *args: None
                     mock_open.return_value.write = lambda x: None
@@ -129,7 +129,11 @@ class TestGetTopnLinks:
                 {
                     "content": "https://popular.com",
                     "sender_name": "User1",
-                    "reactions": [{"reaction": "👍"}, {"reaction": "❤️"}, {"reaction": "😂"}],
+                    "reactions": [
+                        {"reaction": "👍"},
+                        {"reaction": "❤️"},
+                        {"reaction": "😂"},
+                    ],
                 }
             ]
         }

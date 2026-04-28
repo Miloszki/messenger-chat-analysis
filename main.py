@@ -26,6 +26,7 @@ from mca.analytics.message_length import (
 from mca.config.constants import COLORS, IS_WINDOWS, MESSENGER_BUILTIN_MESSAGES
 from mca.core.interval import check_month_interval, filter_messages_to_one_month
 from mca.core.normalizer import standarize
+from mca.ml.label_days import display_label_calendar, label_days
 from mca.nlp.digest import save_group_chat_digest
 from mca.viz.emojis import create_emoji_cloud, extract_emojis, save_emoji_cloud
 from mca.viz.word_cloud import display_word_cloud, get_most_used_words
@@ -116,7 +117,7 @@ def displayGeneral(members, debug):
             ha="left",
         )
     plt.tight_layout()
-    plt.savefig(f"./results{_constants.MONTHNAME}/general.png")
+    plt.savefig(f"{_constants.results_dir()}/general.png")
 
     if debug:
         plt.show()
@@ -136,7 +137,7 @@ def displayTop3(members, debug):
         yval = bar.get_height()
         plt.text(bar.get_x() + bar.get_width() / 2.4, yval + 1, yval)
     plt.tight_layout()
-    plt.savefig(f"./results{_constants.MONTHNAME}/top3.png")
+    plt.savefig(f"{_constants.results_dir()}/top3.png")
 
     if debug:
         plt.show()
@@ -207,7 +208,8 @@ def process_chat(path, folder, chat_name):
     check_month_interval(data)
 
     _constants.MONTHNAME = calendar.month_name[_correct_interval.CORRECT_MONTH]
-    Path(f"./results{_constants.MONTHNAME}-{chat_name}").mkdir(exist_ok=True)
+    _constants.CHATNAME = chat_name
+    Path(_constants.results_dir()).mkdir(exist_ok=True)
 
     members = init_members(data)
     print(len(members))
@@ -248,9 +250,17 @@ def process_chat(path, folder, chat_name):
             save_topn_videos(top3videos, folder)
         return "Media processed"
 
+    _day_labels: dict = {}
+
+    def run_label_days():
+        result = label_days(data)
+        _day_labels.update(result or {})
+        display_label_calendar(result, debug)
+        return "Label days processed"
+
     def run_active_days():
         active_days = get_most_active_days(data)
-        display_most_active_days(*active_days, debug)
+        display_most_active_days(*active_days, debug, day_labels=_day_labels or None)
         return "Active days processed"
 
     def run_word_cloud():
@@ -297,6 +307,7 @@ def process_chat(path, folder, chat_name):
         ("Processing links", run_links),
         ("Processing top users", run_top_users),
         ("Displaying media", run_media),
+        ("Processing day labeling", run_label_days),
         ("Processing active days", run_active_days),
         # ("Processing summaries", run_summaries),
         ("Processing chat digest", run_digest),
@@ -313,8 +324,7 @@ def process_chat(path, folder, chat_name):
         if debug:
             print(f"        → {result}")
 
-    results_path = Path(f"./results{_constants.MONTHNAME}")
-    print(f"Data saved in {results_path} folder")
+    print(f"Data saved in {_constants.results_dir()} folder")
 
 
 if __name__ == "__main__":

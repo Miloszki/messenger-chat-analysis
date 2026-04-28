@@ -36,6 +36,13 @@ COLORS = ["#E6C200", "#A7A7AD", "#A77044"]
 IS_WINDOWS = platform.system() == "Windows"
 MONTH = datetime.now() - timedelta(days=30)
 MONTHNAME = MONTH.strftime("%B")
+CHATNAME = ""
+
+
+def results_dir() -> str:
+    return f"./results-{MONTHNAME}-{CHATNAME}"
+
+
 NICE_COLORMAPS = [
     "Blues",
     "Oranges",
