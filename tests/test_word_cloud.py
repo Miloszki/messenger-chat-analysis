@@ -1,6 +1,6 @@
 import pytest
 
-from modules.word_cloud import get_most_used_words
+from mca.viz.word_cloud import get_most_used_words
 
 
 class TestGetMostUsedWords:

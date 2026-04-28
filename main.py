@@ -7,20 +7,11 @@ from pathlib import Path
 from matplotlib import pyplot as plt
 from tabulate import tabulate
 
-from modules.active_days import display_most_active_days, get_most_active_days
-from modules.average_message_length import (
-    display_average_message_lengths,
-    get_average_message_length,
-)
-from modules.chat_digest import save_group_chat_digest
-import modules.constants as _constants
-import modules.correct_interval as _correct_interval
-from modules.constants import COLORS, IS_WINDOWS, MESSENGER_BUILTIN_MESSAGES
-from modules.correct_interval import check_month_interval, filter_messages_to_one_month
-from modules.emojis import extract_emojis, save_emoji_cloud, create_emoji_cloud
-from modules.helper_funs import standarize
-from modules.links import get_topn_links
-from modules.photos_videos import (
+import mca.config.constants as _constants
+import mca.core.interval as _correct_interval
+from mca.analytics.activity import display_most_active_days, get_most_active_days
+from mca.analytics.links import get_topn_links
+from mca.analytics.media import (
     display_topn_photos,
     get_most_reactedto_photos,
     get_most_reactedto_videos,
@@ -28,7 +19,16 @@ from modules.photos_videos import (
     get_topn_videos,
     save_topn_videos,
 )
-from modules.word_cloud import display_word_cloud, get_most_used_words
+from mca.analytics.message_length import (
+    display_average_message_lengths,
+    get_average_message_length,
+)
+from mca.config.constants import COLORS, IS_WINDOWS, MESSENGER_BUILTIN_MESSAGES
+from mca.core.interval import check_month_interval, filter_messages_to_one_month
+from mca.core.normalizer import standarize
+from mca.nlp.digest import save_group_chat_digest
+from mca.viz.emojis import create_emoji_cloud, extract_emojis, save_emoji_cloud
+from mca.viz.word_cloud import display_word_cloud, get_most_used_words
 
 try:
     plt.style.use("rose-pine-moon")
@@ -52,7 +52,9 @@ def count_messages(data, members):
     member_index = {m["name"]: m for m in members}
     for message in data["messages"]:
         if "content" in message:
-            if any(keyword in message["content"] for keyword in MESSENGER_BUILTIN_MESSAGES):
+            if any(
+                keyword in message["content"] for keyword in MESSENGER_BUILTIN_MESSAGES
+            ):
                 continue
         sender = message["sender_name"]
         if sender in member_index:
@@ -78,7 +80,9 @@ def displayGeneral(members, debug):
     plt.ylabel("Uczestnicy")
 
     if not list_mess:
-        print("No members with more than 15 messages, skipping general statistics chart")
+        print(
+            "No members with more than 15 messages, skipping general statistics chart"
+        )
         plt.close()
         return
 
@@ -271,7 +275,7 @@ def process_chat(path, folder, chat_name):
         return "Chat digest processed"
 
     # def run_summaries():
-    #     from modules.summarize_text import (
+    #     from mca.nlp.summarize import (
     #         preprocess_json_to_summarize_active_days_format,
     #         preprocess_json_to_summarize_month_format,
     #         summarize_month,

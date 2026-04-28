@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from modules.correct_interval import (
+from mca.core.interval import (
     check_month_interval,
     filter_messages_to_one_month,
 )

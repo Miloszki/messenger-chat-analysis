@@ -3,7 +3,7 @@ import tempfile
 
 import pytest
 
-from modules.helper_funs import save_messages_from_person
+from mca.core.normalizer import save_messages_from_person
 
 
 class TestSaveMessagesFromPerson:

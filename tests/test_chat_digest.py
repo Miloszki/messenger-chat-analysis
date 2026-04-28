@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from modules.chat_digest import (
+from mca.nlp.digest import (
     DigestConfig,
     _clean_text,
     _clip,

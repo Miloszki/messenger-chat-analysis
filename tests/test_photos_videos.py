@@ -1,6 +1,6 @@
 import pytest
 
-from modules.photos_videos import (
+from mca.analytics.media import (
     get_most_reactedto_photos,
     get_most_reactedto_videos,
     get_topn_photos,

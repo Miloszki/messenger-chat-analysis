@@ -1,6 +1,6 @@
 import pytest
 
-from modules.emojis import create_emoji_cloud, extract_emojis
+from mca.viz.emojis import create_emoji_cloud, extract_emojis
 
 
 @pytest.mark.parametrize(

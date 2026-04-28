@@ -2,7 +2,7 @@ from datetime import datetime
 
 import pytest
 
-from modules.active_days import get_most_active_days
+from mca.analytics.activity import get_most_active_days
 
 
 class TestGetMostActiveDays:

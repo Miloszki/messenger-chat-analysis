@@ -1,6 +1,6 @@
 import pytest
 
-from modules.average_message_length import get_average_message_length
+from mca.analytics.message_length import get_average_message_length
 
 
 class TestGetAverageMessageLength:
