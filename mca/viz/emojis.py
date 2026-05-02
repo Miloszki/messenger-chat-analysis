@@ -4,12 +4,13 @@ import random
 from collections import Counter
 
 import emoji
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageFont
+from pilmoji import Pilmoji
 
 from ..config import constants
 from ..config.constants import IS_WINDOWS
 
-_BUNDLED_EMOJI_FONT = os.path.join("misc", "fonts", "NotoColorEmoji.ttf")
+_BUNDLED_EMOJI_FONT = os.path.join("misc", "fonts", "NotoColorEmoji-Regular.ttf")
 _SYSTEM_EMOJI_FONT = (
     "C:/Windows/Fonts/seguiemj.ttf"
     if IS_WINDOWS
@@ -124,19 +125,17 @@ def save_emoji_cloud(emoji_positions):
 
     img_width, img_height = 1200, 800
     img = Image.new("RGBA", (img_width, img_height), color=(15, 15, 25, 255))
-    draw = ImageDraw.Draw(img)
 
     font_cache = {}
 
-    for x, y, size, emoji_char, _ in emoji_positions:
-        if size not in font_cache:
-            try:
-                font_cache[size] = ImageFont.truetype(_EMOJI_FONT_PATH, size)
-            except OSError:
-                font_cache[size] = ImageFont.load_default()
-
-        font = font_cache[size]
-        draw.text((x, y), emoji_char, font=font, embedded_color=True)
+    with Pilmoji(img) as pilmoji:
+        for x, y, size, emoji_char, _ in emoji_positions:
+            if size not in font_cache:
+                try:
+                    font_cache[size] = ImageFont.truetype(_EMOJI_FONT_PATH, size)
+                except OSError:
+                    font_cache[size] = ImageFont.load_default()
+            pilmoji.text((x, y), emoji_char, font=font_cache[size])
 
     img.save(f"./results{constants.MONTHNAME}/emoji_cloud.png", format="PNG")
     print(f"Saved emoji cloud with {len(emoji_positions)} emojis")

@@ -28,10 +28,11 @@ def get_topn_links(data, top_n=15):
 
     with open(f"./results{constants.MONTHNAME}/links.txt", "w", encoding="UTF-8") as f:
         for link in links:
-            reaction_word = "reactions" if link["Num_reactions"] > 1 else "reaction"
-            f.write(
-                f"{link['URL']} (sent by {link['Sender']}): {link['Num_reactions']} {reaction_word}\n"
-            )
+            if link["Num_reactions"] > 0:
+                reaction_word = "reactions" if link["Num_reactions"] > 1 else "reaction"
+                f.write(
+                    f"{link['URL']} (sent by {link['Sender']}): {link['Num_reactions']} {reaction_word}\n"
+                )
 
     links.sort(key=lambda x: x["Num_reactions"], reverse=True)
     topnlinks = links[:top_n]

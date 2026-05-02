@@ -411,6 +411,7 @@ dependencies = [
     { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.14'" },
     { name = "pandas", version = "3.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.14'" },
     { name = "pillow" },
+    { name = "pilmoji" },
     { name = "pyparsing" },
     { name = "pystempel" },
     { name = "python-dateutil" },
@@ -444,6 +445,7 @@ requires-dist = [
     { name = "packaging", specifier = "==24.2" },
     { name = "pandas", specifier = ">=2.0.0" },
     { name = "pillow", specifier = "==11.0.0" },
+    { name = "pilmoji", specifier = ">=2.0.5" },
     { name = "pyparsing", specifier = "==3.2.0" },
     { name = "pystempel", specifier = ">=2.0.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
@@ -665,6 +667,19 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/d6/b9/fb620dd47fc7cc9678af8f8bd8c772034ca4977237049287e99dda360b66/pillow-11.0.0-cp313-cp313t-win32.whl", hash = "sha256:607bbe123c74e272e381a8d1957083a9463401f7bd01287f50521ecb05a313f8", size = 2253197, upload-time = "2024-10-15T14:23:35.309Z" },
     { url = "https://files.pythonhosted.org/packages/df/86/25dde85c06c89d7fc5db17940f07aae0a56ac69aa9ccb5eb0f09798862a8/pillow-11.0.0-cp313-cp313t-win_amd64.whl", hash = "sha256:5c39ed17edea3bc69c743a8dd3e9853b7509625c2462532e62baa0732163a904", size = 2572169, upload-time = "2024-10-15T14:23:37.33Z" },
     { url = "https://files.pythonhosted.org/packages/51/85/9c33f2517add612e17f3381aee7c4072779130c634921a756c97bc29fb49/pillow-11.0.0-cp313-cp313t-win_arm64.whl", hash = "sha256:75acbbeb05b86bc53cbe7b7e6fe00fbcf82ad7c684b3ad82e3d711da9ba287d3", size = 2256828, upload-time = "2024-10-15T14:23:39.826Z" },
+]
+
+[[package]]
+name = "pilmoji"
+version = "2.0.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "emoji" },
+    { name = "pillow" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/05/75/e5430da7a99ea66c9b93cdbd66372a010022398887eb3f8fcccb866010ee/pilmoji-2.0.5.tar.gz", hash = "sha256:e038532c97b79b3d55c29f5a6c2b6b627105b8cd1db0c1d2271402b3e4e9be18", size = 11889, upload-time = "2026-01-06T01:33:20.637Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/24/09/2dcc3fa1e0627f95143b61cc2c8a13042f5dcd7e11d1e12b0ba5e205aeca/pilmoji-2.0.5-py3-none-any.whl", hash = "sha256:856ddf827d42d8c8d2a1f879fdc1ae318ffb72435c4adc934be6d3e48376173d", size = 11740, upload-time = "2026-01-29T17:25:35.378Z" },
 ]
 
 [[package]]
