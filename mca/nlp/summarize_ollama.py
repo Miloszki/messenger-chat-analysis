@@ -181,7 +181,20 @@ def _summarize_month(messages: List[Dict], model: str = MODEL) -> MonthlySummary
     participants = sorted({m["author"] for m in messages})
     month_label = datetime.fromtimestamp(messages[0]["ts"] / 1000).strftime("%Y-%m") if messages else "?"
 
-    sample = "\n".join(f"{m['author']}: {m['text']}" for m in messages)
+    # Sample evenly across the month so the model sees the full spread,
+    # then cap total chars to leave enough context for output generation.
+    max_chars = 12_000
+    step = max(1, len(messages) // 300)
+    sampled = messages[::step]
+    lines: List[str] = []
+    total = 0
+    for m in sampled:
+        line = f"{m['author']}: {m['text']}"
+        total += len(line) + 1
+        if total > max_chars:
+            break
+        lines.append(line)
+    sample = "\n".join(lines)
 
     prompt = (
         f"You are summarising an entire month ({month_label}) of a Polish group chat.\n"
