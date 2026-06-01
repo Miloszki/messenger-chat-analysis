@@ -3,7 +3,6 @@ import os
 import random
 from collections import Counter
 
-import emoji
 from PIL import Image, ImageDraw, ImageFont
 
 from ..config import constants
@@ -18,15 +17,8 @@ _SYSTEM_EMOJI_FONT = (
 _EMOJI_FONT_PATH = _BUNDLED_EMOJI_FONT if os.path.exists(_BUNDLED_EMOJI_FONT) else _SYSTEM_EMOJI_FONT
 
 
-def extract_emojis(data):
-    emojis = []
-    for message in data["messages"]:
-        if "content" in message:
-            emojis_in_message = [
-                char for char in message["content"] if char in emoji.EMOJI_DATA
-            ]
-            emojis.extend(emojis_in_message)
-    return emojis
+def extract_emojis(messages):
+    return [e for msg in messages for e in msg.emojis]
 
 
 def create_emoji_cloud(emojis, max_emojis=50):

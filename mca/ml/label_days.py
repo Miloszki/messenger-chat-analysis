@@ -75,7 +75,6 @@ def label_days(data):
     predictions = knn.predict(new_X_norm)
 
     save_training_data(dates, raw_matrix, DATASET_PATH, labels=predictions)
-    export_labels(dates, predictions, Path.cwd() / "cluster_sample.json")
 
     return dict(zip(dates, predictions.tolist()))
 

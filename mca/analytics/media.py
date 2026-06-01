@@ -8,19 +8,16 @@ from ..config import constants
 from ..config.constants import IS_WINDOWS
 
 
-def get_most_reactedto_photos(data):
+def get_most_reactedto_photos(messages):
     m_list = []
-    for message in data["messages"]:
-        if "photos" in message and "reactions" in message:
-            num_reactions = len(message["reactions"])
-            for photo in message["photos"]:
-                m_list.append(
-                    {
-                        "sent_by": message["sender_name"],
-                        "photo": photo["uri"],
-                        "num_reactions": num_reactions,
-                    }
-                )
+    for msg in messages:
+        if msg.photos and msg.num_reactions > 0:
+            for photo_uri in msg.photos:
+                m_list.append({
+                    "sent_by": msg.sender,
+                    "photo": photo_uri,
+                    "num_reactions": msg.num_reactions,
+                })
     return m_list
 
 
@@ -35,19 +32,16 @@ def get_topn_photos(photo_data, top_n=5, num_participants=1):
     return result
 
 
-def get_most_reactedto_videos(data):
+def get_most_reactedto_videos(messages):
     m_list = []
-    for message in data["messages"]:
-        if "videos" in message and "reactions" in message:
-            num_reactions = len(message["reactions"])
-            for video in message["videos"]:
-                m_list.append(
-                    {
-                        "sent_by": message["sender_name"],
-                        "video": video["uri"],
-                        "num_reactions": num_reactions,
-                    }
-                )
+    for msg in messages:
+        if msg.videos and msg.num_reactions > 0:
+            for video_uri in msg.videos:
+                m_list.append({
+                    "sent_by": msg.sender,
+                    "video": video_uri,
+                    "num_reactions": msg.num_reactions,
+                })
     return m_list
 
 

@@ -6,12 +6,8 @@ import matplotlib.pyplot as plt
 from ..config import constants
 
 
-def get_most_active_days(data, top_n=3):
-    dates = [message["timestamp_ms"] for message in data["messages"]]
-    date_strings = [
-        datetime.fromtimestamp(date / 1000.0).strftime("%Y-%m-%d") for date in dates
-    ]
-    date_counts = Counter(date_strings)
+def get_most_active_days(messages, top_n=3):
+    date_counts = Counter(msg.date for msg in messages)
     return date_counts.most_common(top_n), top_n
 
 

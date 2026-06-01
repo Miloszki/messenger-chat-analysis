@@ -2,7 +2,6 @@ import calendar
 import glob
 import json
 import statistics
-from datetime import datetime
 from pathlib import Path
 
 from matplotlib import pyplot as plt
@@ -24,9 +23,10 @@ from mca.analytics.message_length import (
     display_average_message_lengths,
     get_average_message_length,
 )
-from mca.config.constants import COLORS, IS_WINDOWS, MESSENGER_BUILTIN_MESSAGES
+from mca.config.constants import COLORS, IS_WINDOWS
 from mca.core.interval import check_month_interval, filter_messages_to_one_month
 from mca.core.normalizer import standarize
+from mca.core.parsed_messages import parse_messages
 from mca.ml.label_days import display_label_calendar, label_days
 from mca.nlp.digest import save_group_chat_digest
 from mca.nlp.summarize_ollama import (
@@ -55,17 +55,13 @@ def init_members(data):
     return master
 
 
-def count_messages(data, members):
+def count_messages(messages, members):
     member_index = {m["name"]: m for m in members}
-    for message in data["messages"]:
-        if "content" in message:
-            if any(
-                keyword in message["content"] for keyword in MESSENGER_BUILTIN_MESSAGES
-            ):
-                continue
-        sender = message["sender_name"]
-        if sender in member_index:
-            member_index[sender]["num_of_messages"] += 1
+    for msg in messages:
+        if msg.is_builtin:
+            continue
+        if msg.sender in member_index:
+            member_index[msg.sender]["num_of_messages"] += 1
 
 
 def get_top_3(data):
@@ -217,12 +213,13 @@ def process_chat(path, folder, chat_name):
     _constants.CHATNAME = chat_name
     Path(_constants.results_dir()).mkdir(exist_ok=True)
 
+    messages = parse_messages(data)
     members = init_members(data)
     print(len(members))
     num_participants = len(members)
 
     def run_member_processing():
-        count_messages(data, members)
+        count_messages(messages, members)
         return members
 
     def run_general_stats():
@@ -230,7 +227,7 @@ def process_chat(path, folder, chat_name):
         return "General statistics generated"
 
     def run_links():
-        return get_topn_links(data)
+        return get_topn_links(messages)
 
     def run_top_users():
         top_3 = get_top_3(members)
@@ -238,8 +235,8 @@ def process_chat(path, folder, chat_name):
         return "Top users processed"
 
     def run_media():
-        photos = get_most_reactedto_photos(data)
-        videos = get_most_reactedto_videos(data)
+        photos = get_most_reactedto_photos(messages)
+        videos = get_most_reactedto_videos(messages)
         top3photos = (
             get_topn_photos(photos, num_participants=num_participants)
             if photos
@@ -267,7 +264,7 @@ def process_chat(path, folder, chat_name):
 
     def run_active_days():
         nonlocal _active_days
-        _active_days = get_most_active_days(data)
+        _active_days = get_most_active_days(messages)
         display_most_active_days(*_active_days, debug, day_labels=_day_labels or None)
         return "Active days processed"
 
@@ -277,12 +274,12 @@ def process_chat(path, folder, chat_name):
         return "Word cloud generated"
 
     def run_message_lengths():
-        lengths = get_average_message_length(data)
+        lengths = get_average_message_length(messages)
         display_average_message_lengths(lengths, debug)
         return "Message lengths processed"
 
     def run_emojis():
-        emojis = extract_emojis(data)
+        emojis = extract_emojis(messages)
         if emojis:
             ascii_art = create_emoji_cloud(emojis)
             save_emoji_cloud(ascii_art)
@@ -307,12 +304,11 @@ def process_chat(path, folder, chat_name):
             return "Active days not computed yet, skipping"
         top_dates = [date for date, _ in _active_days[0]]
         messages_by_date: dict = {date: [] for date in top_dates}
-        for m in data["messages"]:
-            if "content" not in m or not m["content"]:
+        for msg in messages:
+            if not msg.content:
                 continue
-            day = datetime.fromtimestamp(m["timestamp_ms"] / 1000).strftime("%Y-%m-%d")
-            if day in messages_by_date:
-                messages_by_date[day].append(f"{m['sender_name']}: {m['content']}\n\n")
+            if msg.date in messages_by_date:
+                messages_by_date[msg.date].append(f"{msg.sender}: {msg.content}\n\n")
         summaries = ollama_summarize_active_days(messages_by_date)
         out_dir = Path(_constants.results_dir())
         for s in summaries:

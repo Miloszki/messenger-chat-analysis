@@ -1,27 +1,18 @@
 import matplotlib.pyplot as plt
 
 from ..config import constants
-from ..config.constants import MESSENGER_BUILTIN_MESSAGES
 
 
-def get_average_message_length(data):
+def get_average_message_length(messages):
     lengths = {}
-    for message in data["messages"]:
-        sender = message["sender_name"]
-        if "content" in message:
-            if any(
-                keyword in message["content"] for keyword in MESSENGER_BUILTIN_MESSAGES
-            ):
-                continue
-            length = len(message["content"])
-            if sender in lengths:
-                lengths[sender].append(length)
-            else:
-                lengths[sender] = [length]
-    avg_lengths = {
-        sender: int(sum(lengths[sender]) / len(lengths[sender])) for sender in lengths
-    }
-    return avg_lengths
+    for msg in messages:
+        if msg.content is None or msg.is_builtin:
+            continue
+        if msg.sender in lengths:
+            lengths[msg.sender].append(len(msg.content))
+        else:
+            lengths[msg.sender] = [len(msg.content)]
+    return {sender: int(sum(v) / len(v)) for sender, v in lengths.items()}
 
 
 def display_average_message_lengths(avg_lengths, debug):
