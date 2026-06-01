@@ -11,12 +11,11 @@ import pandas as pd
 from ..config import constants
 from .features import (
     build_day_features,
-    export_labels,
     normalize_features,
     save_training_data,
 )
 
-DATASET_PATH = os.path.join("misc", "datasets", "knn_training_data.csv")
+DATASET_PATH = Path("misc") / "datasets" / "knn_training_data.csv"
 
 
 def _euclidean_distance(a, b):
@@ -76,7 +75,6 @@ def label_days(data):
     predictions = knn.predict(new_X_norm)
 
     save_training_data(dates, raw_matrix, DATASET_PATH, labels=predictions)
-    export_labels(dates, predictions, Path.cwd() / "cluster_sample.json")
 
     return dict(zip(dates, predictions.tolist()))
 

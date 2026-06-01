@@ -8,19 +8,16 @@ from PIL import Image, ImageDraw, ImageFont
 from ..config import constants
 
 
-def get_most_reactedto_photos(data):
+def get_most_reactedto_photos(messages):
     m_list = []
-    for message in data["messages"]:
-        if "photos" in message and "reactions" in message:
-            num_reactions = len(message["reactions"])
-            for photo in message["photos"]:
-                m_list.append(
-                    {
-                        "sent_by": message["sender_name"],
-                        "photo": photo["uri"],
-                        "num_reactions": num_reactions,
-                    }
-                )
+    for msg in messages:
+        if msg.photos and msg.num_reactions > 0:
+            for photo_uri in msg.photos:
+                m_list.append({
+                    "sent_by": msg.sender,
+                    "photo": photo_uri,
+                    "num_reactions": msg.num_reactions,
+                })
     return m_list
 
 
@@ -35,19 +32,16 @@ def get_topn_photos(photo_data, top_n=5, num_participants=1):
     return result
 
 
-def get_most_reactedto_videos(data):
+def get_most_reactedto_videos(messages):
     m_list = []
-    for message in data["messages"]:
-        if "videos" in message and "reactions" in message:
-            num_reactions = len(message["reactions"])
-            for video in message["videos"]:
-                m_list.append(
-                    {
-                        "sent_by": message["sender_name"],
-                        "video": video["uri"],
-                        "num_reactions": num_reactions,
-                    }
-                )
+    for msg in messages:
+        if msg.videos and msg.num_reactions > 0:
+            for video_uri in msg.videos:
+                m_list.append({
+                    "sent_by": msg.sender,
+                    "video": video_uri,
+                    "num_reactions": msg.num_reactions,
+                })
     return m_list
 
 
@@ -124,9 +118,9 @@ def display_topn_photos(photos, folder_path, debug):
                 newim = rgb_im
 
             saved += 1
-            os.makedirs(f"./results{constants.MONTHNAME}/top3photos{constants.MONTHNAME}/", exist_ok=True)
+            os.makedirs(f"{constants.results_dir()}/top3photos/", exist_ok=True)
             newim.save(
-                f"./results{constants.MONTHNAME}/top3photos{constants.MONTHNAME}/photo{saved}.jpg",
+                f"{constants.results_dir()}/top3photos/photo{saved}.jpg",
                 "JPEG",
                 quality=85,
                 optimize=True,
@@ -136,7 +130,7 @@ def display_topn_photos(photos, folder_path, debug):
 
 
 def save_topn_videos(videos, folder_path):
-    output_dir = f"./results{constants.MONTHNAME}/top3videos{constants.MONTHNAME}/"
+    output_dir = f"{constants.results_dir()}/top3videos/"
     os.makedirs(output_dir, exist_ok=True)
     for i, video in enumerate(videos):
         source = os.path.join(folder_path, video["video"])
@@ -171,7 +165,7 @@ def save_topn_videos(videos, folder_path):
                 copyfile(source, destination)
         except FileNotFoundError:
             try:
-                print(f"ffmpeg not found on PATH, falling back to direct copy...")
+                print("ffmpeg not found on PATH, falling back to direct copy...")
                 copyfile(source, destination)
             except FileNotFoundError:
                 print(f"Source video not found, skipping: {source}")

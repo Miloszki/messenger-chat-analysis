@@ -23,11 +23,17 @@ from mca.analytics.message_length import (
     display_average_message_lengths,
     get_average_message_length,
 )
-from mca.config.constants import COLORS, IS_WINDOWS, MESSENGER_BUILTIN_MESSAGES
+from mca.config.constants import COLORS, IS_WINDOWS
 from mca.core.interval import check_month_interval, filter_messages_to_one_month
 from mca.core.normalizer import standarize
+from mca.core.parsed_messages import parse_messages
 from mca.ml.label_days import display_label_calendar, label_days
 from mca.nlp.digest import save_group_chat_digest
+from mca.nlp.summarize_ollama import (
+    save_group_chat_digest as save_ollama_digest,
+    summarize_month as ollama_summarize_month,
+    summarize_most_active_days as ollama_summarize_active_days,
+)
 from mca.viz.emojis import create_emoji_cloud, extract_emojis, save_emoji_cloud
 from mca.viz.word_cloud import display_word_cloud, get_most_used_words
 
@@ -49,17 +55,13 @@ def init_members(data):
     return master
 
 
-def count_messages(data, members):
+def count_messages(messages, members):
     member_index = {m["name"]: m for m in members}
-    for message in data["messages"]:
-        if "content" in message:
-            if any(
-                keyword in message["content"] for keyword in MESSENGER_BUILTIN_MESSAGES
-            ):
-                continue
-        sender = message["sender_name"]
-        if sender in member_index:
-            member_index[sender]["num_of_messages"] += 1
+    for msg in messages:
+        if msg.is_builtin:
+            continue
+        if msg.sender in member_index:
+            member_index[msg.sender]["num_of_messages"] += 1
 
 
 def get_top_3(data):
@@ -211,12 +213,13 @@ def process_chat(path, folder, chat_name):
     _constants.CHATNAME = chat_name
     Path(_constants.results_dir()).mkdir(exist_ok=True)
 
+    messages = parse_messages(data)
     members = init_members(data)
     print(len(members))
     num_participants = len(members)
 
     def run_member_processing():
-        count_messages(data, members)
+        count_messages(messages, members)
         return members
 
     def run_general_stats():
@@ -224,7 +227,7 @@ def process_chat(path, folder, chat_name):
         return "General statistics generated"
 
     def run_links():
-        return get_topn_links(data)
+        return get_topn_links(messages)
 
     def run_top_users():
         top_3 = get_top_3(members)
@@ -232,8 +235,8 @@ def process_chat(path, folder, chat_name):
         return "Top users processed"
 
     def run_media():
-        photos = get_most_reactedto_photos(data)
-        videos = get_most_reactedto_videos(data)
+        photos = get_most_reactedto_photos(messages)
+        videos = get_most_reactedto_videos(messages)
         top3photos = (
             get_topn_photos(photos, num_participants=num_participants)
             if photos
@@ -251,6 +254,7 @@ def process_chat(path, folder, chat_name):
         return "Media processed"
 
     _day_labels: dict = {}
+    _active_days: tuple = ()
 
     def run_label_days():
         result = label_days(data)
@@ -259,8 +263,9 @@ def process_chat(path, folder, chat_name):
         return "Label days processed"
 
     def run_active_days():
-        active_days = get_most_active_days(data)
-        display_most_active_days(*active_days, debug, day_labels=_day_labels or None)
+        nonlocal _active_days
+        _active_days = get_most_active_days(messages)
+        display_most_active_days(*_active_days, debug, day_labels=_day_labels or None)
         return "Active days processed"
 
     def run_word_cloud():
@@ -269,37 +274,46 @@ def process_chat(path, folder, chat_name):
         return "Word cloud generated"
 
     def run_message_lengths():
-        lengths = get_average_message_length(data)
+        lengths = get_average_message_length(messages)
         display_average_message_lengths(lengths, debug)
         return "Message lengths processed"
 
     def run_emojis():
-        emojis = extract_emojis(data)
+        emojis = extract_emojis(messages)
         if emojis:
             ascii_art = create_emoji_cloud(emojis)
             save_emoji_cloud(ascii_art)
         return "Emojis processed"
 
     def run_digest():
-        save_group_chat_digest(data)
+        save_group_chat_digest(data, out_dir=Path(_constants.results_dir()))
         return "Chat digest processed"
 
-    # def run_summaries():
-    #     from mca.nlp.summarize import (
-    #         preprocess_json_to_summarize_active_days_format,
-    #         preprocess_json_to_summarize_month_format,
-    #         summarize_month,
-    #         summarize_most_active_days,
-    #     )
+    def run_ollama_digest():
+        save_ollama_digest(data, out_dir=Path(_constants.results_dir()))
+        return "Ollama chat digest processed"
 
-    #     txt_month = preprocess_json_to_summarize_month_format(data)
-    #     txt_active_days = preprocess_json_to_summarize_active_days_format(
-    #         active_days, data
-    #     )
+    def run_ollama_month_summary():
+        summary = ollama_summarize_month(data)
+        out = Path(_constants.results_dir()) / "month_summary_ollama.txt"
+        out.write_text(summary.summary, encoding="utf-8")
+        return f"Ollama month summary saved to {out}"
 
-    #     summarize_month()
-    #     summarize_most_active_days(txt_active_days)
-    #     return "Summaries processed"
+    def run_ollama_active_days_summary():
+        if not _active_days:
+            return "Active days not computed yet, skipping"
+        top_dates = [date for date, _ in _active_days[0]]
+        messages_by_date: dict = {date: [] for date in top_dates}
+        for msg in messages:
+            if not msg.content:
+                continue
+            if msg.date in messages_by_date:
+                messages_by_date[msg.date].append(f"{msg.sender}: {msg.content}\n\n")
+        summaries = ollama_summarize_active_days(messages_by_date)
+        out_dir = Path(_constants.results_dir())
+        for s in summaries:
+            (out_dir / f"active_day_{s.date}_summary.txt").write_text(s.summary, encoding="utf-8")
+        return f"Ollama active day summaries saved ({len(summaries)} files)"
 
     steps = [
         ("Processing members", run_member_processing),
@@ -309,8 +323,10 @@ def process_chat(path, folder, chat_name):
         ("Displaying media", run_media),
         ("Processing day labeling", run_label_days),
         ("Processing active days", run_active_days),
-        # ("Processing summaries", run_summaries),
         ("Processing chat digest", run_digest),
+        ("Processing ollama chat digest", run_ollama_digest),
+        ("Processing ollama month summary", run_ollama_month_summary),
+        ("Processing ollama active day summaries", run_ollama_active_days_summary),
         ("Generating word cloud", run_word_cloud),
         ("Processing message lengths", run_message_lengths),
         ("Processing emojis", run_emojis),

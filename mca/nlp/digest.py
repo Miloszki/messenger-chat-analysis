@@ -600,7 +600,7 @@ def build_group_chat_digest(data: Dict, cfg: Optional[DigestConfig] = None) -> s
 def save_group_chat_digest(
     data: Dict, out_dir: Optional[Path] = None, cfg: Optional[DigestConfig] = None
 ) -> Path:
-    out_dir = out_dir or Path(f"./results{constants.MONTHNAME}")
+    out_dir = out_dir or Path(constants.results_dir())
     out_dir.mkdir(parents=True, exist_ok=True)
 
     digest = build_group_chat_digest(data, cfg=cfg)

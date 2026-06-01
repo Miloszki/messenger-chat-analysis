@@ -4,7 +4,6 @@ import platform
 import random
 from collections import Counter
 
-import emoji
 from PIL import Image, ImageFont
 from pilmoji import Pilmoji
 from pilmoji.source import AppleEmojiSource, MicrosoftEmojiSource, TwitterEmojiSource
@@ -31,15 +30,8 @@ _EMOJI_SOURCE_BY_PLATFORM = {
 _EMOJI_SOURCE = _EMOJI_SOURCE_BY_PLATFORM.get(platform.system(), TwitterEmojiSource)
 
 
-def extract_emojis(data):
-    emojis = []
-    for message in data["messages"]:
-        if "content" in message:
-            emojis_in_message = [
-                char for char in message["content"] if char in emoji.EMOJI_DATA
-            ]
-            emojis.extend(emojis_in_message)
-    return emojis
+def extract_emojis(messages):
+    return [e for msg in messages for e in msg.emojis]
 
 
 def create_emoji_cloud(emojis, max_emojis=50):
@@ -149,5 +141,5 @@ def save_emoji_cloud(emoji_positions):
                     font_cache[size] = ImageFont.load_default()
             pilmoji.text((x, y), emoji_char, font=font_cache[size])
 
-    img.save(f"./results{constants.MONTHNAME}/emoji_cloud.png", format="PNG")
+    img.save(f"{constants.results_dir()}/emoji_cloud.png", format="PNG")
     print(f"Saved emoji cloud with {len(emoji_positions)} emojis")

@@ -56,7 +56,7 @@ def display_word_cloud(words, top_n, debug):
     )
     wc.generate(" ".join(words))
 
-    wc.to_file(f"./results{constants.MONTHNAME}/words.png")
+    wc.to_file(f"{constants.results_dir()}/words.png")
 
     if debug:
         plt.figure(figsize=(12, 6))
