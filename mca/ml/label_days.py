@@ -1,4 +1,5 @@
 import datetime
+import os
 from collections import Counter
 from pathlib import Path
 
@@ -15,7 +16,7 @@ from .features import (
     save_training_data,
 )
 
-DATASET_PATH = r"misc\datasets\knn_training_data.csv"
+DATASET_PATH = os.path.join("misc", "datasets", "knn_training_data.csv")
 
 
 def _euclidean_distance(a, b):

@@ -1,11 +1,11 @@
 import os
+import platform
 import subprocess
 from shutil import copyfile
 
 from PIL import Image, ImageDraw, ImageFont
 
 from ..config import constants
-from ..config.constants import IS_WINDOWS
 
 
 def get_most_reactedto_photos(data):
@@ -78,17 +78,27 @@ def display_topn_photos(photos, folder_path, debug):
 
             fontsize = 20 if im.width < 500 or im.height < 500 else 40
 
-            _bundled = os.path.join("misc", "fonts", "NotoColorEmoji-Regular.ttf")
-            _system = (
-                "C:/Windows/Fonts/arial.ttf"
-                if IS_WINDOWS
-                else "/System/Library/Fonts/Supplemental/Arial.ttf"
-            )
-            font_path = _bundled if os.path.exists(_bundled) else _system
-            try:
-                font = ImageFont.truetype(font_path, fontsize)
-            except OSError:
-                font = ImageFont.load_default()
+            _text_font_candidates = {
+                "Windows": ["C:/Windows/Fonts/arial.ttf", "C:/Windows/Fonts/segoeui.ttf"],
+                "Darwin": [
+                    "/System/Library/Fonts/Supplemental/Arial.ttf",
+                    "/System/Library/Fonts/Helvetica.ttc",
+                ],
+                "Linux": [
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+                    "/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf",
+                    "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+                ],
+            }
+            font = ImageFont.load_default()
+            for candidate in _text_font_candidates.get(platform.system(), []):
+                if os.path.exists(candidate):
+                    try:
+                        font = ImageFont.truetype(candidate, fontsize)
+                    except OSError:
+                        continue
+                    break
 
             text_width = font.getlength(text)
             newim = Image.new("RGB", (im.width, im.height + fontsize), "black")

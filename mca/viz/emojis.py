@@ -1,22 +1,34 @@
 import math
 import os
+import platform
 import random
 from collections import Counter
 
 import emoji
 from PIL import Image, ImageFont
 from pilmoji import Pilmoji
+from pilmoji.source import AppleEmojiSource, MicrosoftEmojiSource, TwitterEmojiSource
 
 from ..config import constants
-from ..config.constants import IS_WINDOWS
 
 _BUNDLED_EMOJI_FONT = os.path.join("misc", "fonts", "NotoColorEmoji-Regular.ttf")
-_SYSTEM_EMOJI_FONT = (
-    "C:/Windows/Fonts/seguiemj.ttf"
-    if IS_WINDOWS
-    else "/System/Library/Fonts/Supplemental/Apple Color Emoji.ttc"
+_SYSTEM_EMOJI_FONT_BY_PLATFORM = {
+    "Windows": "C:/Windows/Fonts/seguiemj.ttf",
+    "Darwin": "/System/Library/Fonts/Supplemental/Apple Color Emoji.ttc",
+    "Linux": "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf",
+}
+_SYSTEM_EMOJI_FONT = _SYSTEM_EMOJI_FONT_BY_PLATFORM.get(platform.system(), "")
+_EMOJI_FONT_PATH = (
+    _BUNDLED_EMOJI_FONT
+    if os.path.exists(_BUNDLED_EMOJI_FONT)
+    else _SYSTEM_EMOJI_FONT
 )
-_EMOJI_FONT_PATH = _BUNDLED_EMOJI_FONT if os.path.exists(_BUNDLED_EMOJI_FONT) else _SYSTEM_EMOJI_FONT
+
+_EMOJI_SOURCE_BY_PLATFORM = {
+    "Windows": MicrosoftEmojiSource,
+    "Darwin": AppleEmojiSource,
+}
+_EMOJI_SOURCE = _EMOJI_SOURCE_BY_PLATFORM.get(platform.system(), TwitterEmojiSource)
 
 
 def extract_emojis(data):
@@ -128,7 +140,7 @@ def save_emoji_cloud(emoji_positions):
 
     font_cache = {}
 
-    with Pilmoji(img) as pilmoji:
+    with Pilmoji(img, source=_EMOJI_SOURCE) as pilmoji:
         for x, y, size, emoji_char, _ in emoji_positions:
             if size not in font_cache:
                 try:
