@@ -42,7 +42,12 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
+    "ruff>=0.8.0",
+    "black>=24.0.0",
 ]
 
 [tool.ruff.lint]
 unfixable = ["F401"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
