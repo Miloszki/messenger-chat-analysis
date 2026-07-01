@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+TARGETS=(mca main.py)
+status=0
+
+uv run ruff check "${TARGETS[@]}" || status=1
+uv run black -l 120 --target-version py312 --check --diff "${TARGETS[@]}" || status=1
+uv run pytest || status=1
+
+exit $status

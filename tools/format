@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+TARGETS=(mca main.py)
+
+uv run ruff check --fix "${TARGETS[@]}" || true
+uv run black -l 120 --target-version py312 "${TARGETS[@]}"
