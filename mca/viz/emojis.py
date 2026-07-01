@@ -17,11 +17,7 @@ _SYSTEM_EMOJI_FONT_BY_PLATFORM = {
     "Linux": "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf",
 }
 _SYSTEM_EMOJI_FONT = _SYSTEM_EMOJI_FONT_BY_PLATFORM.get(platform.system(), "")
-_EMOJI_FONT_PATH = (
-    _BUNDLED_EMOJI_FONT
-    if os.path.exists(_BUNDLED_EMOJI_FONT)
-    else _SYSTEM_EMOJI_FONT
-)
+_EMOJI_FONT_PATH = _BUNDLED_EMOJI_FONT if os.path.exists(_BUNDLED_EMOJI_FONT) else _SYSTEM_EMOJI_FONT
 
 _EMOJI_SOURCE_BY_PLATFORM = {
     "Windows": MicrosoftEmojiSource,

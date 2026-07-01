@@ -19,9 +19,7 @@ def get_most_used_words(data, top_n=500_000):
     words = []
     for message in data["messages"]:
         if "content" in message:
-            if any(
-                keyword in message["content"] for keyword in MESSENGER_BUILTIN_MESSAGES
-            ):
+            if any(keyword in message["content"] for keyword in MESSENGER_BUILTIN_MESSAGES):
                 continue
             content_without_links = re.sub(r"(https?:\/\/\S+)", "", message["content"])
             content_without_tags = re.sub(
@@ -31,9 +29,7 @@ def get_most_used_words(data, top_n=500_000):
             )
 
             words.extend(
-                word
-                for word in re.findall(r"\w+", content_without_tags.lower())
-                if word not in STOPWORDS_POLISH
+                word for word in re.findall(r"\w+", content_without_tags.lower()) if word not in STOPWORDS_POLISH
             )
 
     return words, top_n

@@ -13,18 +13,18 @@ def get_most_reactedto_photos(messages):
     for msg in messages:
         if msg.photos and msg.num_reactions > 0:
             for photo_uri in msg.photos:
-                m_list.append({
-                    "sent_by": msg.sender,
-                    "photo": photo_uri,
-                    "num_reactions": msg.num_reactions,
-                })
+                m_list.append(
+                    {
+                        "sent_by": msg.sender,
+                        "photo": photo_uri,
+                        "num_reactions": msg.num_reactions,
+                    }
+                )
     return m_list
 
 
 def get_topn_photos(photo_data, top_n=5, num_participants=1):
-    dynamic_topn = len(
-        [x for x in photo_data if x["num_reactions"] > int(num_participants * 0.2)]
-    )
+    dynamic_topn = len([x for x in photo_data if x["num_reactions"] > int(num_participants * 0.2)])
     if dynamic_topn > top_n:
         top_n = dynamic_topn
     result = sorted(photo_data, reverse=True, key=lambda x: x["num_reactions"])[:top_n]
@@ -37,18 +37,18 @@ def get_most_reactedto_videos(messages):
     for msg in messages:
         if msg.videos and msg.num_reactions > 0:
             for video_uri in msg.videos:
-                m_list.append({
-                    "sent_by": msg.sender,
-                    "video": video_uri,
-                    "num_reactions": msg.num_reactions,
-                })
+                m_list.append(
+                    {
+                        "sent_by": msg.sender,
+                        "video": video_uri,
+                        "num_reactions": msg.num_reactions,
+                    }
+                )
     return m_list
 
 
 def get_topn_videos(video_data, top_n=5, num_participants=1):
-    dynamic_topn = len(
-        [x for x in video_data if x["num_reactions"] > int(num_participants * 0.2)]
-    )
+    dynamic_topn = len([x for x in video_data if x["num_reactions"] > int(num_participants * 0.2)])
     if dynamic_topn > top_n:
         top_n = dynamic_topn
     result = sorted(video_data, reverse=True, key=lambda x: x["num_reactions"])[:top_n]

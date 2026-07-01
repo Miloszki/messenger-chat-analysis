@@ -121,9 +121,7 @@ def browse_cluster_days(
     """Write the most representative conversations per cluster to a text file."""
     messages_by_date: dict[str, list] = {}
     for msg in data["messages"]:
-        date = datetime.datetime.fromtimestamp(msg["timestamp_ms"] / 1000.0).strftime(
-            "%Y-%m-%d"
-        )
+        date = datetime.datetime.fromtimestamp(msg["timestamp_ms"] / 1000.0).strftime("%Y-%m-%d")
         messages_by_date.setdefault(date, []).append(msg)
 
     date_arr = np.array(dates)
@@ -153,14 +151,10 @@ def browse_cluster_days(
 
             lines.append(f"\n  -- {day_date} ({len(msgs)} messages) --")
             for msg in msgs:
-                if "content" in msg and any(
-                    kw in msg["content"] for kw in MESSENGER_BUILTIN_MESSAGES
-                ):
+                if "content" in msg and any(kw in msg["content"] for kw in MESSENGER_BUILTIN_MESSAGES):
                     continue
 
-                time_str = datetime.datetime.fromtimestamp(
-                    msg["timestamp_ms"] / 1000.0
-                ).strftime("%H:%M")
+                time_str = datetime.datetime.fromtimestamp(msg["timestamp_ms"] / 1000.0).strftime("%H:%M")
                 sender = msg["sender_name"]
 
                 if "content" in msg:

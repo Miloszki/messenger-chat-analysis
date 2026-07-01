@@ -6,9 +6,7 @@ import emoji
 
 from ..config.constants import MESSENGER_BUILTIN_MESSAGES
 
-_URL_PATTERN = re.compile(
-    r"(?:http|ftp|https):\/\/([\w_-]+(?:\.[\w_-]+)+)([\w.,@?^=%&:\/~+#-]*[\w@?^=%&\/~+#-])"
-)
+_URL_PATTERN = re.compile(r"(?:http|ftp|https):\/\/([\w_-]+(?:\.[\w_-]+)+)([\w.,@?^=%&:\/~+#-]*[\w@?^=%&\/~+#-])")
 
 
 @dataclass
@@ -35,15 +33,14 @@ def parse_messages(data):
 
         urls = []
         emojis_in_msg = []
-        photos=[p["uri"] for p in message.get("photos", [])]
-        videos=[v["uri"] for v in message.get("videos", [])]
+        photos = [p["uri"] for p in message.get("photos", [])]
+        videos = [v["uri"] for v in message.get("videos", [])]
         is_builtin = False
 
         if num_reactions and not photos and not videos:
             if parsed and (parsed[-1].photos or parsed[-1].videos) and parsed[-1].sender == current_sender:
                 parsed[-1].num_reactions += num_reactions
                 num_reactions = 0
-
 
         if content:
             is_builtin = any(kw in content for kw in MESSENGER_BUILTIN_MESSAGES)
@@ -52,18 +49,20 @@ def parse_messages(data):
                 urls = ["".join(m) for m in matches]
                 emojis_in_msg = [c for c in content if c in emoji.EMOJI_DATA]
 
-        parsed.append(ParsedMessage(
-            sender=message["sender_name"],
-            content=content,
-            timestamp_ms=message["timestamp_ms"],
-            date=date,
-            num_reactions=num_reactions,
-            urls=urls,
-            emojis=emojis_in_msg,
-            photos=photos,
-            videos=videos,
-            is_builtin=is_builtin,
-        ))
+        parsed.append(
+            ParsedMessage(
+                sender=message["sender_name"],
+                content=content,
+                timestamp_ms=message["timestamp_ms"],
+                date=date,
+                num_reactions=num_reactions,
+                urls=urls,
+                emojis=emojis_in_msg,
+                photos=photos,
+                videos=videos,
+                is_builtin=is_builtin,
+            )
+        )
 
     print(parsed[:10])
     return parsed

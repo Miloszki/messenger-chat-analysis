@@ -16,9 +16,7 @@ def display_most_active_days(active_days, top_n, debug, day_labels=None):
         print("No active days data available, skipping chart")
         return
     dates, counts = zip(*active_days)
-    formatted_dates = [
-        datetime.strptime(date, "%Y-%m-%d").strftime("%d-%m-%Y (%A)") for date in dates
-    ]
+    formatted_dates = [datetime.strptime(date, "%Y-%m-%d").strftime("%d-%m-%Y (%A)") for date in dates]
     days_of_week_polish = {
         "Monday": "Poniedziałek",
         "Tuesday": "Wtorek",
@@ -61,6 +59,7 @@ def display_most_active_days(active_days, top_n, debug, day_labels=None):
 
     if label_color:
         import matplotlib.patches as mpatches
+
         plt.legend(
             handles=[mpatches.Patch(color=c, label=str(lbl)) for lbl, c in label_color.items()],
             title="Etykieta dnia",

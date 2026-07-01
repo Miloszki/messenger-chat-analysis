@@ -9,9 +9,7 @@ def check_month_interval(data) -> bool:
     messages_list = data["messages"]
 
     num_messages = len(messages_list)
-    CORRECT_MONTH = datetime.fromtimestamp(
-        messages_list[num_messages // 2]["timestamp_ms"] / 1000.0
-    ).month
+    CORRECT_MONTH = datetime.fromtimestamp(messages_list[num_messages // 2]["timestamp_ms"] / 1000.0).month
     last_mess_timestamp = messages_list[0]["timestamp_ms"]
     first_mess_timestamp = messages_list[-1]["timestamp_ms"]
 
@@ -25,9 +23,7 @@ def check_month_interval(data) -> bool:
         print(f"Wrong interval, dates in different months: {date1}, {date2}")
         return False
 
-    print(
-        f"Correct month interval for {calendar.month_name[CORRECT_MONTH]}, dates: {date1}, {date2}"
-    )
+    print(f"Correct month interval for {calendar.month_name[CORRECT_MONTH]}, dates: {date1}, {date2}")
     return True
 
 

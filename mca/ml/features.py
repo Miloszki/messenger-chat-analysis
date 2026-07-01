@@ -27,9 +27,7 @@ def build_day_features(data) -> dict[str, np.ndarray]:
     """
     days: dict[str, list] = {}
     for message in data["messages"]:
-        date = datetime.datetime.fromtimestamp(
-            message["timestamp_ms"] / 1000.0
-        ).strftime("%Y-%m-%d")
+        date = datetime.datetime.fromtimestamp(message["timestamp_ms"] / 1000.0).strftime("%Y-%m-%d")
         days.setdefault(date, []).append(message)
 
     day_features: dict[str, np.ndarray] = {}
@@ -44,17 +42,13 @@ def build_day_features(data) -> dict[str, np.ndarray]:
         evening_msgs = 0  # hours 18-23
 
         for message in messages:
-            if "content" in message and any(
-                keyword in message["content"] for keyword in MESSENGER_BUILTIN_MESSAGES
-            ):
+            if "content" in message and any(keyword in message["content"] for keyword in MESSENGER_BUILTIN_MESSAGES):
                 continue
 
             msg_count += 1
             unique_senders.add(message["sender_name"])
 
-            hour = datetime.datetime.fromtimestamp(
-                message["timestamp_ms"] / 1000.0
-            ).hour
+            hour = datetime.datetime.fromtimestamp(message["timestamp_ms"] / 1000.0).hour
             if hour < 6:
                 night_msgs += 1
             elif hour >= 18:

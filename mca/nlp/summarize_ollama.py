@@ -2,6 +2,7 @@
 Ollama-based chat digest and summarizer with structured output.
 Replaces heuristic logic in digest.py and sumy-based summarize.py.
 """
+
 from __future__ import annotations
 
 import re
@@ -21,6 +22,7 @@ MODEL = "llama3.2"
 # ─────────────────────────────────────────────────────────────────────────────
 # Structured-output schemas
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class ThreadDigest(BaseModel):
     keywords: List[str] = Field(
@@ -70,6 +72,7 @@ class ActiveDaySummary(BaseModel):
 # Internal metadata container
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class ThreadResult:
     thread: List[Dict]
@@ -106,11 +109,13 @@ def _iter_messages(data: Dict) -> List[Dict]:
     for m in msgs:
         txt = _clean_text(m.get("content", "") or "")
         if txt and not _is_builtin(txt):
-            out.append({
-                "ts": m.get("timestamp_ms", 0),
-                "author": m.get("sender_name", "Unknown"),
-                "text": txt,
-            })
+            out.append(
+                {
+                    "ts": m.get("timestamp_ms", 0),
+                    "author": m.get("sender_name", "Unknown"),
+                    "text": txt,
+                }
+            )
     return out
 
 
@@ -145,6 +150,7 @@ def _ns_to_s(ns: float) -> str:
 # Ollama calls
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _analyse_thread(thread: List[Dict], model: str = MODEL) -> ThreadDigest:
     participants = ", ".join(sorted({m["author"] for m in thread}))
     start = datetime.fromtimestamp(thread[0]["ts"] / 1000).strftime("%Y-%m-%d %H:%M")
@@ -159,7 +165,7 @@ def _analyse_thread(thread: List[Dict], model: str = MODEL) -> ThreadDigest:
         "2. summary: write a flowing story in Polish (3–5 sentences) recounting this thread "
         "as if telling a friend — what was discussed, the mood, any memorable moments. "
         "If something was particularly funny or interesting, quote it directly inline "
-        "(e.g. Kowalski napisał: \"dokładnie tak to było\"). "
+        '(e.g. Kowalski napisał: "dokładnie tak to było"). '
         "Do NOT use bullet points, headers, or lists — write only natural prose.\n\n"
         "3. importance_score: float 0.0–10.0. Higher for many participants, lively debate, "
         "rich topic, memorable moments. Lower for small-talk or few messages.\n\n"
@@ -204,7 +210,7 @@ def _summarize_month(messages: List[Dict], model: str = MODEL) -> MonthlySummary
         "You MUST cover: (1) the main topics and recurring themes, (2) the general mood and dynamic between participants, "
         "(3) who was most active or vocal, (4) any memorable, funny, or heated moments, "
         "(5) at least one direct quote from the messages if something stood out "
-        "(e.g. Kowalski napisał: \"dokładnie tak to było\"). "
+        '(e.g. Kowalski napisał: "dokładnie tak to było"). '
         "Do NOT use bullet points, headers, or lists — write only natural flowing prose.\n\n"
         "Return ONLY valid JSON with a single 'summary' field. No markdown, no extra text.\n\n"
         f"Sample of messages from the month:\n{sample}"
@@ -248,6 +254,7 @@ def _summarize_day(date: str, message_lines: List[str], model: str = MODEL) -> A
 # Public API
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def build_group_chat_digest(
     data: Dict,
     model: str = MODEL,
@@ -260,10 +267,7 @@ def build_group_chat_digest(
     if not messages:
         return (ChatDigest(threads=[]), "Brak wiadomości tekstowych do streszczenia.")
 
-    raw_threads = [
-        t for t in _segment_threads(messages, time_gap_min)
-        if len(t) >= min_thread_messages
-    ]
+    raw_threads = [t for t in _segment_threads(messages, time_gap_min) if len(t) >= min_thread_messages]
     if not raw_threads:
         return (
             ChatDigest(threads=[]),
@@ -273,13 +277,15 @@ def build_group_chat_digest(
     results: List[ThreadResult] = []
     for thread in raw_threads:
         digest = _analyse_thread(thread, model=model)
-        results.append(ThreadResult(
-            thread=thread,
-            digest=digest,
-            start=datetime.fromtimestamp(thread[0]["ts"] / 1000),
-            end=datetime.fromtimestamp(thread[-1]["ts"] / 1000),
-            authors=sorted({m["author"] for m in thread}),
-        ))
+        results.append(
+            ThreadResult(
+                thread=thread,
+                digest=digest,
+                start=datetime.fromtimestamp(thread[0]["ts"] / 1000),
+                end=datetime.fromtimestamp(thread[-1]["ts"] / 1000),
+                authors=sorted({m["author"] for m in thread}),
+            )
+        )
 
     results.sort(key=lambda r: r.digest.importance_score, reverse=True)
     top = results[:max_threads]
@@ -299,10 +305,7 @@ def summarize_most_active_days(
     active_days_messages: Dict[str, List[str]],
     model: str = MODEL,
 ) -> List[ActiveDaySummary]:
-    return [
-        _summarize_day(date, lines, model=model)
-        for date, lines in active_days_messages.items()
-    ]
+    return [_summarize_day(date, lines, model=model) for date, lines in active_days_messages.items()]
 
 
 def save_group_chat_digest(
@@ -322,6 +325,7 @@ def save_group_chat_digest(
 # ─────────────────────────────────────────────────────────────────────────────
 # Text renderer
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _render_digest_text(results: List[ThreadResult]) -> str:
     lines: List[str] = []

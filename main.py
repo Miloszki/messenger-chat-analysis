@@ -72,9 +72,7 @@ def displayGeneral(members, debug):
     plt.figure(figsize=(12, 6))
     sorted_members = sorted(members, key=lambda x: x["name"])
     list_names = [x["name"] for x in sorted_members if x["num_of_messages"] > 15]
-    list_mess = [
-        x["num_of_messages"] for x in sorted_members if x["num_of_messages"] > 15
-    ]
+    list_mess = [x["num_of_messages"] for x in sorted_members if x["num_of_messages"] > 15]
     bars = plt.barh(list_names, list_mess)
     plt.grid(axis="y")
     plt.title("Liczba wiadomości na osobę (przynajmniej 15 wiadomości)")
@@ -83,9 +81,7 @@ def displayGeneral(members, debug):
     plt.ylabel("Uczestnicy")
 
     if not list_mess:
-        print(
-            "No members with more than 15 messages, skipping general statistics chart"
-        )
+        print("No members with more than 15 messages, skipping general statistics chart")
         plt.close()
         return
 
@@ -148,9 +144,7 @@ def displayTop3(members, debug):
 def pick_chat_to_analyze(folder):
     chats = []
     paths = []
-    for i, file in enumerate(
-        glob.glob(f"./{folder}/your_facebook_activity/messages/inbox/*")
-    ):
+    for i, file in enumerate(glob.glob(f"./{folder}/your_facebook_activity/messages/inbox/*")):
         path = standarize_path(file).split("/")[-1]
         chat_name = path.split("_")[0]
         chats.append((i + 1, chat_name))
@@ -158,9 +152,7 @@ def pick_chat_to_analyze(folder):
     print(f"Available chats in {folder}:")
     print(tabulate(chats, headers=["Number", "Name"], tablefmt="outline"))
     choice = int(
-        input(
-            "Pick a chat to analyze (0 picks nothing and continues to other available folders if there are any): "
-        )
+        input("Pick a chat to analyze (0 picks nothing and continues to other available folders if there are any): ")
     )
     if choice < 1 or choice > len(chats):
         print("Wrong choice, exiting")
@@ -176,14 +168,10 @@ def pick_chat_to_analyze(folder):
 def get_facebook_folders():
     current_dir = Path.cwd()
     facebook_folders = [
-        folder.name
-        for folder in current_dir.iterdir()
-        if folder.is_dir() and folder.name.startswith("facebook")
+        folder.name for folder in current_dir.iterdir() if folder.is_dir() and folder.name.startswith("facebook")
     ]
     if not facebook_folders:
-        print(
-            "Did not find any facebook folders, try putting the folder in the same directory as the script"
-        )
+        print("Did not find any facebook folders, try putting the folder in the same directory as the script")
         exit(1)
     return facebook_folders[::-1]
 
@@ -237,16 +225,8 @@ def process_chat(path, folder, chat_name):
     def run_media():
         photos = get_most_reactedto_photos(messages)
         videos = get_most_reactedto_videos(messages)
-        top3photos = (
-            get_topn_photos(photos, num_participants=num_participants)
-            if photos
-            else None
-        )
-        top3videos = (
-            get_topn_videos(videos, num_participants=num_participants)
-            if videos
-            else None
-        )
+        top3photos = get_topn_photos(photos, num_participants=num_participants) if photos else None
+        top3videos = get_topn_videos(videos, num_participants=num_participants) if videos else None
         if top3photos:
             display_topn_photos(top3photos, folder, debug)
         if top3videos:
@@ -353,13 +333,7 @@ if __name__ == "__main__":
         chat_to_analyze = pick_chat_to_analyze(folder)
 
         if chat_to_analyze:
-            path = (
-                Path(folder)
-                / "your_facebook_activity"
-                / "messages"
-                / "inbox"
-                / chat_to_analyze
-            )
+            path = Path(folder) / "your_facebook_activity" / "messages" / "inbox" / chat_to_analyze
             picked = True
             break
 

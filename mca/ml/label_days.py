@@ -85,9 +85,7 @@ def display_label_calendar(day_labels, debug=False):
 
     unique_labels = sorted(set(day_labels.values()), key=str)
     palette = plt.cm.Set2.colors
-    label_color = {
-        lbl: palette[i % len(palette)] for i, lbl in enumerate(unique_labels)
-    }
+    label_color = {lbl: palette[i % len(palette)] for i, lbl in enumerate(unique_labels)}
 
     dates_parsed = sorted(datetime.date.fromisoformat(d) for d in day_labels)
     start, end = dates_parsed[0], dates_parsed[-1]
@@ -138,10 +136,7 @@ def display_label_calendar(day_labels, debug=False):
 
     ax.axis("off")
     ax.legend(
-        handles=[
-            mpatches.Patch(color=label_color[lbl], label=str(lbl))
-            for lbl in unique_labels
-        ],
+        handles=[mpatches.Patch(color=label_color[lbl], label=str(lbl)) for lbl in unique_labels],
         loc="lower right",
         fontsize=9,
         framealpha=0.9,

@@ -275,9 +275,7 @@ def split_sentences_pl(text: str) -> List[str]:
 # ----------------------------
 # Topic keywords + topic sentences
 # ----------------------------
-def _keywords_for_thread(
-    thread: List[Dict], cfg: DigestConfig, stemmer_kind: str, stemmer_obj
-) -> List[str]:
+def _keywords_for_thread(thread: List[Dict], cfg: DigestConfig, stemmer_kind: str, stemmer_obj) -> List[str]:
     freq: Dict[str, int] = {}
     for m in thread:
         for w in _WORD_RE.findall(m["text"]):
@@ -290,12 +288,7 @@ def _keywords_for_thread(
             if s in STOPWORDS_POLISH:
                 continue
             freq[s] = freq.get(s, 0) + 1
-    return [
-        w
-        for w, _ in sorted(freq.items(), key=lambda x: x[1], reverse=True)[
-            : cfg.top_keywords
-        ]
-    ]
+    return [w for w, _ in sorted(freq.items(), key=lambda x: x[1], reverse=True)[: cfg.top_keywords]]
 
 
 def _topic_sentence_candidates(
@@ -352,9 +345,7 @@ def _select_topic_sentences_and_filter_keywords(
     stemmer_kind: str,
     stemmer_obj,
 ) -> Tuple[List[str], List[Dict]]:
-    candidates = _topic_sentence_candidates(
-        thread, keywords, cfg, stemmer_kind, stemmer_obj
-    )
+    candidates = _topic_sentence_candidates(thread, keywords, cfg, stemmer_kind, stemmer_obj)
 
     best_for_kw: Dict[str, Dict] = {}
     for cand in candidates:
@@ -389,9 +380,7 @@ def _select_topic_sentences_and_filter_keywords(
 # ----------------------------
 # Stances / conflicts / anecdotes
 # ----------------------------
-def _detect_stances(
-    thread: List[Dict], cfg: DigestConfig, name_variants: Dict[str, List[str]]
-) -> List[Dict]:
+def _detect_stances(thread: List[Dict], cfg: DigestConfig, name_variants: Dict[str, List[str]]) -> List[Dict]:
     stances = []
     for m in thread:
         t = m["text"].lower()
@@ -414,9 +403,7 @@ def _detect_stances(
     return stances
 
 
-def _detect_conflicts(
-    thread: List[Dict], cfg: DigestConfig, name_variants: Dict[str, List[str]]
-) -> List[Dict]:
+def _detect_conflicts(thread: List[Dict], cfg: DigestConfig, name_variants: Dict[str, List[str]]) -> List[Dict]:
     conflicts = []
     for m in thread:
         t_low = m["text"].lower()
@@ -424,9 +411,7 @@ def _detect_conflicts(
             continue
         author = m["author"]
         target = _mention_target(t_low, name_variants, exclude_author=author)
-        conflicts.append(
-            {"from": author, "to": target, "type": "insult", "evidence": m["text"]}
-        )
+        conflicts.append({"from": author, "to": target, "type": "insult", "evidence": m["text"]})
     return conflicts
 
 
@@ -527,25 +512,17 @@ def build_group_chat_digest(data: Dict, cfg: Optional[DigestConfig] = None) -> s
         start = item["start"].strftime("%Y-%m-%d %H:%M")
         end = item["end"].strftime("%H:%M")
 
-        topic = (
-            ", ".join(item["keywords"])
-            if item["keywords"]
-            else "brak wyraźnych słów kluczowych"
-        )
+        topic = ", ".join(item["keywords"]) if item["keywords"] else "brak wyraźnych słów kluczowych"
         lines.append(f"Wątek {i} ({start}–{end})")
         lines.append(f"Temat (słowa kluczowe): {topic}")
         lines.append(f"Uczestnicy: {', '.join(authors)}")
-        lines.append(
-            f"Liczba wiadomości: {len(th)} | Wynik ważności: {item['score']:.2f}"
-        )
+        lines.append(f"Liczba wiadomości: {len(th)} | Wynik ważności: {item['score']:.2f}")
 
         if item["topic_sentences"]:
             lines.append("Odnoszące się do tematu wątku (ranking):")
             for s in item["topic_sentences"][: cfg.topic_sentences_max]:
                 if cfg.include_evidence_snippets:
-                    lines.append(
-                        f"- {s['author']}: „{_clip(s['sentence'], cfg.evidence_max_len)}“"
-                    )
+                    lines.append(f"- {s['author']}: „{_clip(s['sentence'], cfg.evidence_max_len)}“")
                 else:
                     lines.append(f"- {s['author']}")
 
@@ -565,9 +542,7 @@ def build_group_chat_digest(data: Dict, cfg: Optional[DigestConfig] = None) -> s
             for c in item["conflicts"][:6]:
                 tgt = c["to"] if c.get("to") else "kogoś (niejednoznaczne)"
                 if cfg.include_evidence_snippets:
-                    lines.append(
-                        f"- {c['from']} obraził/a {tgt}: „{_clip(c['evidence'], cfg.evidence_max_len)}“"
-                    )
+                    lines.append(f"- {c['from']} obraził/a {tgt}: „{_clip(c['evidence'], cfg.evidence_max_len)}“")
                 else:
                     lines.append(f"- {c['from']} obraził/a {tgt}")
 
@@ -575,31 +550,20 @@ def build_group_chat_digest(data: Dict, cfg: Optional[DigestConfig] = None) -> s
             lines.append("Anegdoty / historie osobiste:")
             for a in item["anecdotes"][:6]:
                 if cfg.include_evidence_snippets:
-                    lines.append(
-                        f"- {a['author']} opowiadał/a: „{_clip(a['evidence'], cfg.evidence_max_len)}“"
-                    )
+                    lines.append(f"- {a['author']} opowiadał/a: „{_clip(a['evidence'], cfg.evidence_max_len)}“")
                 else:
                     lines.append(f"- {a['author']} opowiadał/a anegdotę")
 
-        if (
-            not item["stances"]
-            and not item["conflicts"]
-            and not item["anecdotes"]
-            and not item["topic_sentences"]
-        ):
+        if not item["stances"] and not item["conflicts"] and not item["anecdotes"] and not item["topic_sentences"]:
             samples = th[-2:] if len(th) >= 2 else th
             lines.append("Przykładowe wypowiedzi:")
             for m in samples:
-                lines.append(
-                    f"- {m['author']}: „{_clip(m['text'], cfg.evidence_max_len)}“"
-                )
+                lines.append(f"- {m['author']}: „{_clip(m['text'], cfg.evidence_max_len)}“")
 
     return "\n".join(lines)
 
 
-def save_group_chat_digest(
-    data: Dict, out_dir: Optional[Path] = None, cfg: Optional[DigestConfig] = None
-) -> Path:
+def save_group_chat_digest(data: Dict, out_dir: Optional[Path] = None, cfg: Optional[DigestConfig] = None) -> Path:
     out_dir = out_dir or Path(constants.results_dir())
     out_dir.mkdir(parents=True, exist_ok=True)
 
