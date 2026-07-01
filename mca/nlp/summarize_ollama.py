@@ -1,10 +1,3 @@
-"""
-Ollama-based chat digest and summarizer with structured output.
-Replaces heuristic logic in digest.py and sumy-based summarize.py.
-"""
-
-from __future__ import annotations
-
 import re
 from dataclasses import dataclass
 from datetime import datetime
@@ -18,11 +11,6 @@ from ..config import constants
 from ..config.constants import MESSENGER_BUILTIN_MESSAGES
 
 MODEL = "llama3.2"
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Structured-output schemas
-# ─────────────────────────────────────────────────────────────────────────────
-
 
 class ThreadDigest(BaseModel):
     keywords: List[str] = Field(
@@ -68,10 +56,6 @@ class ActiveDaySummary(BaseModel):
     )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Internal metadata container
-# ─────────────────────────────────────────────────────────────────────────────
-
 
 @dataclass
 class ThreadResult:
@@ -81,10 +65,6 @@ class ThreadResult:
     end: datetime
     authors: List[str]
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Preprocessing helpers (algorithmic — kept out of the LLM)
-# ─────────────────────────────────────────────────────────────────────────────
 
 _URL_RE = re.compile(r"https?://\S+")
 _WS_RE = re.compile(r"\s+")
@@ -146,10 +126,6 @@ def _ns_to_s(ns: float) -> str:
     return f"{ns * 1e-9:.2f}s"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Ollama calls
-# ─────────────────────────────────────────────────────────────────────────────
-
 
 def _analyse_thread(thread: List[Dict], model: str = MODEL) -> ThreadDigest:
     participants = ", ".join(sorted({m["author"] for m in thread}))
@@ -179,8 +155,7 @@ def _analyse_thread(thread: List[Dict], model: str = MODEL) -> ThreadDigest:
         format=ThreadDigest.model_json_schema(),
         options={"temperature": 0},
     )
-    print(f"  [thread digest] {_ns_to_s(response.total_duration)}")
-    return ThreadDigest.model_validate_json(response.message.content)
+    return ThreadDigest.model_validate_json(response.message.content), _ns_to_s(response.total_duration)
 
 
 def _summarize_month(messages: List[Dict], model: str = MODEL) -> MonthlySummary:
@@ -275,8 +250,9 @@ def build_group_chat_digest(
         )
 
     results: List[ThreadResult] = []
-    for thread in raw_threads:
-        digest = _analyse_thread(thread, model=model)
+    for i, thread in enumerate(raw_threads, start=1):
+        digest, response_duration  = _analyse_thread(thread, model=model)
+        print(f"  [thread digest] [day {i}] {response_duration}")
         results.append(
             ThreadResult(
                 thread=thread,
