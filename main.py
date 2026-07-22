@@ -23,9 +23,15 @@ from mca.analytics.message_length import (
     display_average_message_lengths,
     get_average_message_length,
 )
+from mca.analytics.participant_stats import (
+    build_participant_stats_rows,
+    count_media_and_emojis,
+    get_month_slug,
+)
 from mca.config.constants import COLORS, IS_WINDOWS
 from mca.core.interval import check_month_interval, filter_messages_to_one_month
 from mca.core.normalizer import standarize
+from mca.core.parse_results_csv import save_participant_stats
 from mca.core.parsed_messages import parse_messages
 from mca.ml.label_days import display_label_calendar, label_days
 from mca.nlp.digest import save_group_chat_digest
@@ -218,8 +224,9 @@ def process_chat(path, folder, chat_name):
         return get_topn_links(messages)
 
     def run_top_users():
-        top_3 = get_top_3(members)
-        displayTop3(top_3, debug)
+        nonlocal _top3
+        _top3 = get_top_3(members)
+        displayTop3(_top3, debug)
         return "Top users processed"
 
     def run_media():
@@ -235,6 +242,7 @@ def process_chat(path, folder, chat_name):
 
     _day_labels: dict = {}
     _active_days: tuple = ()
+    _top3: list = []
 
     def run_label_days():
         result = label_days(data)
@@ -264,6 +272,13 @@ def process_chat(path, folder, chat_name):
             ascii_art = create_emoji_cloud(emojis)
             save_emoji_cloud(ascii_art)
         return "Emojis processed"
+
+    def run_save_participant_stats():
+        media_counts = count_media_and_emojis(messages)
+        month_slug = get_month_slug(messages, _correct_interval.CORRECT_MONTH)
+        rows = build_participant_stats_rows(members, media_counts, _top3, _constants.CHATNAME, month_slug)
+        save_participant_stats(rows)
+        return "Participant stats saved"
 
     def run_digest():
         save_group_chat_digest(data, out_dir=Path(_constants.results_dir()))
@@ -300,6 +315,7 @@ def process_chat(path, folder, chat_name):
         ("Generating general statistics", run_general_stats),
         ("Processing links", run_links),
         ("Processing top users", run_top_users),
+        ("Saving participant stats", run_save_participant_stats),
         ("Displaying media", run_media),
         ("Processing day labeling", run_label_days),
         ("Processing active days", run_active_days),
