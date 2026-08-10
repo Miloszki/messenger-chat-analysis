@@ -120,7 +120,7 @@ class TestSaveParticipantStats:
         }
         save_participant_stats([row])
 
-        expected_path = tmp_path / "results-January-family-chat" / "csvs" / "participant_monthly_stats.csv"
+        expected_path = tmp_path / "results-January-family-chat" / "csvs" / "jan-2026_participant_monthly_stats.csv"
         assert expected_path.exists()
 
     def test_dedup_keeps_latest_row_on_rerun(self, tmp_path, monkeypatch):
@@ -162,7 +162,7 @@ class TestSaveParticipantStats:
         ]
         save_participant_stats(second_run)
 
-        result = pd.read_csv(participant_stats_csv_path())
+        result = pd.read_csv(participant_stats_csv_path("jan-2026"))
         assert len(result) == 1
         assert result.iloc[0]["messages_sent"] == 12
         assert result.iloc[0]["emojis_sent"] == 2
@@ -187,11 +187,11 @@ class TestSaveParticipantStats:
         monkeypatch.setattr(_constants, "MONTHNAME", "January")
         monkeypatch.setattr(_constants, "CHATNAME", "family-chat")
         save_participant_stats([{**row, "month": "jan-2026"}])
-        jan_path = participant_stats_csv_path()
+        jan_path = participant_stats_csv_path("jan-2026")
 
         monkeypatch.setattr(_constants, "MONTHNAME", "February")
         save_participant_stats([{**row, "month": "feb-2026"}])
-        feb_path = participant_stats_csv_path()
+        feb_path = participant_stats_csv_path("feb-2026")
 
         assert jan_path != feb_path
         assert pd.read_csv(jan_path)["month"].tolist() == ["jan-2026"]

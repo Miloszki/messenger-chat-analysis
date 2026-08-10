@@ -5,20 +5,20 @@ from pathlib import Path
 
 import pandas as pd
 
-from ..config.constants import results_dir
+from ..config import constants
 
 RESULTS_CSV_SUBDIR = "csvs"
-PARTICIPANT_STATS_FILENAME = "participant_monthly_stats.csv"
 
 STATS_KEY_COLUMNS = ["month", "chat", "participant"]
 
 
-def participant_stats_csv_path() -> Path:
-    return Path(results_dir()) / RESULTS_CSV_SUBDIR / PARTICIPANT_STATS_FILENAME
+def participant_stats_csv_path(month_slug: str) -> Path:
+    filename = f"{month_slug}_participant_monthly_stats.csv"
+    return Path(constants.results_dir()) / RESULTS_CSV_SUBDIR / filename
 
 
 def save_participant_stats(rows: list[dict]) -> None:
-    csv_path = participant_stats_csv_path()
+    csv_path = participant_stats_csv_path(rows[0]["month"])
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     df_new = pd.DataFrame(rows)
 
