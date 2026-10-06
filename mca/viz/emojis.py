@@ -135,7 +135,10 @@ def save_emoji_cloud(emoji_positions):
                     font_cache[size] = ImageFont.truetype(_EMOJI_FONT_PATH, size)
                 except OSError:
                     font_cache[size] = ImageFont.load_default()
-            pilmoji.text((x, y), emoji_char, font=font_cache[size])
+            try:
+                pilmoji.text((x, y), emoji_char, font=font_cache[size])
+            except Exception:
+                print(f"Skipping emoji {emoji_char!r}: no renderable glyph found")
 
     img.save(f"{constants.results_dir()}/emoji_cloud.png", format="PNG")
     print(f"Saved emoji cloud with {len(emoji_positions)} emojis")
