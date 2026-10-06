@@ -121,3 +121,21 @@ class TestGetMostUsedWords:
 
         # Polish special characters should be preserved
         assert "zażółć" in words or "gęślą" in words or "jaźń" in words
+
+
+class TestGetWordCounts:
+    def test_counts_sorted_desc_and_limited(self):
+        from mca.viz.word_cloud import get_word_counts
+
+        words = ["kot"] * 3 + ["pies"] * 2 + ["ryba"]
+        assert get_word_counts(words, top_n=2) == [("kot", 3), ("pies", 2)]
+
+    def test_empty(self):
+        from mca.viz.word_cloud import get_word_counts
+
+        assert get_word_counts([]) == []
+
+    def test_keeps_single_char_tokens(self):
+        from mca.viz.word_cloud import get_word_counts
+
+        assert get_word_counts(["ą", "ą", "kot"]) == [("ą", 2), ("kot", 1)]

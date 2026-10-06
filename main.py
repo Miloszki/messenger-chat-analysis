@@ -2,6 +2,8 @@ import calendar
 import glob
 import json
 import statistics
+from collections import Counter
+from datetime import datetime
 from pathlib import Path
 
 from matplotlib import pyplot as plt
@@ -10,7 +12,7 @@ from tabulate import tabulate
 import mca.config.constants as _constants
 import mca.core.interval as _correct_interval
 from mca.analytics.activity import display_most_active_days, get_most_active_days
-from mca.analytics.links import get_topn_links
+from mca.analytics.links import collect_links, get_topn_links
 from mca.analytics.media import (
     display_topn_photos,
     get_most_reactedto_photos,
@@ -31,8 +33,9 @@ from mca.analytics.participant_stats import (
 from mca.config.constants import COLORS, IS_WINDOWS
 from mca.core.interval import check_month_interval, filter_messages_to_one_month
 from mca.core.normalizer import standarize
-from mca.core.parse_results_csv import save_participant_stats
+from mca.core.parse_results_csv import participant_stats_csv_path, save_participant_stats
 from mca.core.parsed_messages import parse_messages
+from mca.core.report import Report, ranked, rel_path
 from mca.ml.label_days import display_label_calendar, label_days
 from mca.nlp.digest import save_group_chat_digest
 from mca.nlp.summarize_ollama import (
@@ -40,8 +43,8 @@ from mca.nlp.summarize_ollama import (
     summarize_month as ollama_summarize_month,
     summarize_most_active_days as ollama_summarize_active_days,
 )
-from mca.viz.emojis import create_emoji_cloud, extract_emojis, save_emoji_cloud
-from mca.viz.word_cloud import display_word_cloud, get_most_used_words
+from mca.viz.emojis import create_emoji_cloud, extract_emojis, get_emoji_counts, save_emoji_cloud
+from mca.viz.word_cloud import display_word_cloud, get_most_used_words, get_word_counts
 
 try:
     plt.style.use("rose-pine-moon")
@@ -74,11 +77,14 @@ def get_top_3(data):
     return sorted(data, key=lambda m: m["num_of_messages"], reverse=True)[:3]
 
 
+GENERAL_MIN_MESSAGES = 15
+
+
 def displayGeneral(members, debug):
     plt.figure(figsize=(12, 6))
     sorted_members = sorted(members, key=lambda x: x["name"])
-    list_names = [x["name"] for x in sorted_members if x["num_of_messages"] > 15]
-    list_mess = [x["num_of_messages"] for x in sorted_members if x["num_of_messages"] > 15]
+    list_names = [x["name"] for x in sorted_members if x["num_of_messages"] > GENERAL_MIN_MESSAGES]
+    list_mess = [x["num_of_messages"] for x in sorted_members if x["num_of_messages"] > GENERAL_MIN_MESSAGES]
     bars = plt.barh(list_names, list_mess)
     plt.grid(axis="y")
     plt.title("Liczba wiadomości na osobę (przynajmniej 15 wiadomości)")
@@ -125,6 +131,7 @@ def displayGeneral(members, debug):
 
     if debug:
         plt.show()
+    return mean_val, median_val
 
 
 def displayTop3(members, debug):
@@ -133,7 +140,7 @@ def displayTop3(members, debug):
     list_mess = [x["num_of_messages"] for x in members]
     bars = plt.bar(list_names, height=list_mess, width=0.5, color=COLORS)
     plt.xticks()
-    plt.title("Top 3 najbardziej udzielających się osób")
+    plt.title("Top 3 najczęściej udzielających się osób")
     plt.xlabel("Uczestnicy")
     plt.ylabel("Liczba wiadomości")
     plt.grid(axis="y")
@@ -212,21 +219,74 @@ def process_chat(path, folder, chat_name):
     print(len(members))
     num_participants = len(members)
 
+    results_dir = Path(_constants.results_dir())
+    month_slug = get_month_slug(messages, _correct_interval.CORRECT_MONTH)
+    report = Report()
+    timestamps = [msg.timestamp_ms for msg in messages]
+    report.set(
+        "chat",
+        {
+            "name": chat_name,
+            "month": {
+                "slug": month_slug,
+                "name": _constants.MONTHNAME,
+                "number": _correct_interval.CORRECT_MONTH,
+                "year": int(messages[0].date[:4]),
+            },
+            "period": {
+                "first_message_at": datetime.fromtimestamp(min(timestamps) / 1000).isoformat(timespec="seconds"),
+                "last_message_at": datetime.fromtimestamp(max(timestamps) / 1000).isoformat(timespec="seconds"),
+            },
+            "participant_count": num_participants,
+            "message_count": None,
+        },
+    )
+
     def run_member_processing():
         count_messages(messages, members)
+        report.set_in(("chat", "message_count"), sum(m["num_of_messages"] for m in members))
         return members
 
     def run_general_stats():
-        displayGeneral(members, debug)
+        stats = displayGeneral(members, debug)
+        mean_val, median_val = stats if stats else (None, None)
+        report.set(
+            "message_volume",
+            {
+                "image": "general.png" if stats else None,
+                "min_messages_threshold": GENERAL_MIN_MESSAGES,
+                "mean": mean_val,
+                "median": median_val,
+            },
+        )
         return "General statistics generated"
 
     def run_links():
-        return get_topn_links(messages)
+        top_links, count = get_topn_links(messages)
+        report.set(
+            "links",
+            {
+                "file": "links.txt",
+                "total_count": len(collect_links(messages)),
+                "items": ranked(
+                    {"url": link["URL"], "sender": link["sender"], "reaction_count": link["num_reactions"]}
+                    for link in top_links
+                ),
+            },
+        )
+        return top_links, count
 
     def run_top_users():
         nonlocal _top3
         _top3 = get_top_3(members)
         displayTop3(_top3, debug)
+        report.set(
+            "top_participants",
+            {
+                "image": "top3.png",
+                "items": ranked({"name": m["name"], "message_count": m["num_of_messages"]} for m in _top3),
+            },
+        )
         return "Top users processed"
 
     def run_media():
@@ -234,10 +294,21 @@ def process_chat(path, folder, chat_name):
         videos = get_most_reactedto_videos(messages)
         top3photos = get_topn_photos(photos, num_participants=num_participants) if photos else None
         top3videos = get_topn_videos(videos, num_participants=num_participants) if videos else None
-        if top3photos:
-            display_topn_photos(top3photos, folder, debug)
-        if top3videos:
-            save_topn_videos(top3videos, folder)
+        saved_photos = display_topn_photos(top3photos, folder, debug) if top3photos else []
+        saved_videos = save_topn_videos(top3videos, folder) if top3videos else []
+
+        def media_items(saved, uri_key):
+            return ranked(
+                {
+                    "path": rel_path(item["path"]),
+                    "source_uri": item[uri_key],
+                    "sender": item["sent_by"],
+                    "reaction_count": item["num_reactions"],
+                }
+                for item in saved
+            )
+
+        report.set("media", {"photos": media_items(saved_photos, "photo"), "videos": media_items(saved_videos, "video")})
         return "Media processed"
 
     _day_labels: dict = {}
@@ -248,17 +319,49 @@ def process_chat(path, folder, chat_name):
         result = label_days(data)
         _day_labels.update(result or {})
         display_label_calendar(result, debug)
+        report.set_in(
+            ("activity", "day_labels"),
+            {
+                "image": "day_label_calendar.png" if result else None,
+                "items": [{"date": date, "label": label} for date, label in sorted(_day_labels.items())],
+                "label_counts": dict(Counter(_day_labels.values()).most_common()),
+            },
+        )
         return "Label days processed"
 
     def run_active_days():
         nonlocal _active_days
         _active_days = get_most_active_days(messages)
         display_most_active_days(*_active_days, debug, day_labels=_day_labels or None)
+        report.set_in(
+            ("activity", "most_active_days"),
+            {
+                "image": "active_days.png" if _active_days[0] else None,
+                "items": ranked(
+                    {
+                        "date": date,
+                        "weekday": datetime.strptime(date, "%Y-%m-%d").strftime("%A"),
+                        "message_count": count,
+                        "label": _day_labels.get(date),
+                    }
+                    for date, count in _active_days[0]
+                ),
+            },
+        )
         return "Active days processed"
 
     def run_word_cloud():
         words, top_n = get_most_used_words(data)
         display_word_cloud(words, top_n, debug)
+        report.set(
+            "words",
+            {
+                "image": "words.png" if words else None,
+                "total_count": len(words),
+                "unique_count": len(set(words)),
+                "items": ranked({"word": w, "count": c} for w, c in get_word_counts(words, 200)),
+            },
+        )
         return "Word cloud generated"
 
     def run_message_lengths():
@@ -271,27 +374,54 @@ def process_chat(path, folder, chat_name):
         if emojis:
             ascii_art = create_emoji_cloud(emojis)
             save_emoji_cloud(ascii_art)
+        report.set(
+            "emojis",
+            {
+                "image": "emoji_cloud.png" if emojis else None,
+                "total_count": len(emojis),
+                "unique_count": len(set(emojis)),
+                "items": ranked({"emoji": e, "count": c} for e, c in get_emoji_counts(emojis, 50)),
+            },
+        )
         return "Emojis processed"
 
     def run_save_participant_stats():
         media_counts = count_media_and_emojis(messages)
-        month_slug = get_month_slug(messages, _correct_interval.CORRECT_MONTH)
         rows = build_participant_stats_rows(members, media_counts, _top3, _constants.CHATNAME, month_slug)
         save_participant_stats(rows)
+        report.set(
+            "participants",
+            [
+                {
+                    "name": row["participant"],
+                    "message_count": row["messages_sent"],
+                    "emoji_count": row["emojis_sent"],
+                    "photo_count": row["photos_sent"],
+                    "video_count": row["videos_sent"],
+                    "avg_message_length": None,
+                    "podium_rank": next((r for r in (1, 2, 3) if row[f"rank_{r}"]), None),
+                }
+                for row in sorted(rows, key=lambda r: r["messages_sent"], reverse=True)
+            ],
+        )
+        report.set_in(("files", "participant_stats_csv"), rel_path(participant_stats_csv_path(month_slug)))
         return "Participant stats saved"
 
     def run_digest():
-        save_group_chat_digest(data, out_dir=Path(_constants.results_dir()))
+        out = save_group_chat_digest(data, out_dir=results_dir)
+        report.set_in(("summaries", "digest"), {"file": rel_path(out), "text": out.read_text(encoding="utf-8")})
         return "Chat digest processed"
 
     def run_ollama_digest():
-        save_ollama_digest(data, out_dir=Path(_constants.results_dir()))
+        out, threads = save_ollama_digest(data, out_dir=results_dir)
+        report.set_in(("summaries", "ollama_digest"), {"file": rel_path(out), "threads": threads})
         return "Ollama chat digest processed"
 
     def run_ollama_month_summary():
         summary = ollama_summarize_month(data)
-        out = Path(_constants.results_dir()) / "month_summary_ollama.txt"
+        out = results_dir / "month_summary_ollama.txt"
         out.write_text(summary.summary, encoding="utf-8")
+        report.set_in(("summaries", "month"), {"file": rel_path(out), "text": summary.summary})
         return f"Ollama month summary saved to {out}"
 
     def run_ollama_active_days_summary():
@@ -305,9 +435,12 @@ def process_chat(path, folder, chat_name):
             if msg.date in messages_by_date:
                 messages_by_date[msg.date].append(f"{msg.sender}: {msg.content}\n\n")
         summaries = ollama_summarize_active_days(messages_by_date)
-        out_dir = Path(_constants.results_dir())
+        items = []
         for s in summaries:
-            (out_dir / f"active_day_{s.date}_summary.txt").write_text(s.summary, encoding="utf-8")
+            out = results_dir / f"active_day_{s.date}_summary.txt"
+            out.write_text(s.summary, encoding="utf-8")
+            items.append({"date": s.date, "file": rel_path(out), "summary": s.summary})
+        report.set_in(("summaries", "active_days"), items)
         return f"Ollama active day summaries saved ({len(summaries)} files)"
 
     steps = [
@@ -330,11 +463,15 @@ def process_chat(path, folder, chat_name):
 
     total = len(steps)
     print(f"Processing chat data... ({total} steps)")
-    for i, (step_desc, step_func) in enumerate(steps, 1):
-        print(f"[{i}/{total}] {step_desc}...")
-        result = step_func()
-        if debug:
-            print(f"        → {result}")
+    try:
+        for i, (step_desc, step_func) in enumerate(steps, 1):
+            print(f"[{i}/{total}] {step_desc}...")
+            result = step_func()
+            if debug:
+                print(f"        → {result}")
+    finally:
+        report_path = report.save()
+        print(f"Report saved to {report_path}")
 
     print(f"Data saved in {_constants.results_dir()} folder")
 

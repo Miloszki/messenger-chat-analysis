@@ -30,6 +30,10 @@ def extract_emojis(messages):
     return [e for msg in messages for e in msg.emojis]
 
 
+def get_emoji_counts(emojis, top_n=50):
+    return Counter(emojis).most_common(top_n)
+
+
 def create_emoji_cloud(emojis, max_emojis=50):
     if not emojis:
         print("No emojis available to create cloud.")

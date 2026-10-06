@@ -61,6 +61,7 @@ def get_topn_videos(video_data, top_n=5, num_participants=1):
 
 def display_topn_photos(photos, folder_path, debug):
     saved = 0
+    saved_photos = []
     for photo in photos:
         photo_path = os.path.join(folder_path, photo["photo"])
         try:
@@ -119,19 +120,23 @@ def display_topn_photos(photos, folder_path, debug):
 
             saved += 1
             os.makedirs(f"{constants.results_dir()}/top3photos/", exist_ok=True)
+            destination = f"{constants.results_dir()}/top3photos/photo{saved}.jpg"
             newim.save(
-                f"{constants.results_dir()}/top3photos/photo{saved}.jpg",
+                destination,
                 "JPEG",
                 quality=85,
                 optimize=True,
             )
+            saved_photos.append({**photo, "path": destination})
         except Exception as e:
             print(f"Skipping photo {photo_path}: {e}")
+    return saved_photos
 
 
 def save_topn_videos(videos, folder_path):
     output_dir = f"{constants.results_dir()}/top3videos/"
     os.makedirs(output_dir, exist_ok=True)
+    saved_videos = []
     for i, video in enumerate(videos):
         source = os.path.join(folder_path, video["video"])
         destination = os.path.join(output_dir, f"video{i + 1}.mp4")
@@ -163,10 +168,12 @@ def save_topn_videos(videos, folder_path):
                 print(f"FFmpeg error for {source}: {result.stderr}")
                 print("Falling back to direct copy...")
                 copyfile(source, destination)
+            saved_videos.append({**video, "path": destination})
         except FileNotFoundError:
             try:
                 print("ffmpeg not found on PATH, falling back to direct copy...")
                 copyfile(source, destination)
+                saved_videos.append({**video, "path": destination})
             except FileNotFoundError:
                 print(f"Source video not found, skipping: {source}")
         except Exception as e:
@@ -176,5 +183,7 @@ def save_topn_videos(videos, folder_path):
                 ext = os.path.splitext(source)[1] or ".mp4"
                 fallback_dest = os.path.join(output_dir, f"video{i + 1}{ext}")
                 copyfile(source, fallback_dest)
+                saved_videos.append({**video, "path": fallback_dest})
             except Exception as copy_error:
                 print(f"Fallback copy also failed: {copy_error}")
+    return saved_videos

@@ -88,3 +88,9 @@ class TestCreateEmojiCloud:
         counts = {item[3]: item[4] for item in result}
         assert counts["😊"] == 50
         assert counts["😂"] == 25
+
+
+def test_get_emoji_counts_sorted_and_limited():
+    from mca.viz.emojis import get_emoji_counts
+
+    assert get_emoji_counts(["😂", "😊", "😂"], top_n=1) == [("😂", 2)]

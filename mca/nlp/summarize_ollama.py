@@ -255,24 +255,21 @@ def _summarize_day(date: str, message_lines: List[str], model: str = MODEL) -> A
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def build_group_chat_digest(
+def _build_thread_results(
     data: Dict,
     model: str = MODEL,
     time_gap_min: int = 60,
     min_thread_messages: int = 8,
     max_threads: int = 8,
-) -> Tuple[ChatDigest, str]:
-    """Returns (ChatDigest, formatted_text_in_Polish)."""
+) -> Tuple[List[ThreadResult], Optional[str]]:
+    """Returns (top threads sorted by importance, fallback message when there are none)."""
     messages = _iter_messages(data)
     if not messages:
-        return (ChatDigest(threads=[]), "Brak wiadomości tekstowych do streszczenia.")
+        return [], "Brak wiadomości tekstowych do streszczenia."
 
     raw_threads = [t for t in _segment_threads(messages, time_gap_min) if len(t) >= min_thread_messages]
     if not raw_threads:
-        return (
-            ChatDigest(threads=[]),
-            "Nie wykryto wystarczająco dużych wątków. Zmniejsz min_thread_messages lub time_gap_min.",
-        )
+        return [], "Nie wykryto wystarczająco dużych wątków. Zmniejsz min_thread_messages lub time_gap_min."
 
     results: List[ThreadResult] = []
     for thread in raw_threads:
@@ -288,10 +285,21 @@ def build_group_chat_digest(
         )
 
     results.sort(key=lambda r: r.digest.importance_score, reverse=True)
-    top = results[:max_threads]
+    return results[:max_threads], None
 
-    chat_digest = ChatDigest(threads=[r.digest for r in top])
-    return chat_digest, _render_digest_text(top)
+
+def build_group_chat_digest(
+    data: Dict,
+    model: str = MODEL,
+    time_gap_min: int = 60,
+    min_thread_messages: int = 8,
+    max_threads: int = 8,
+) -> Tuple[ChatDigest, str]:
+    """Returns (ChatDigest, formatted_text_in_Polish)."""
+    top, fallback = _build_thread_results(data, model, time_gap_min, min_thread_messages, max_threads)
+    if fallback:
+        return ChatDigest(threads=[]), fallback
+    return ChatDigest(threads=[r.digest for r in top]), _render_digest_text(top)
 
 
 def summarize_month(data: Dict, model: str = MODEL) -> MonthlySummary:
@@ -313,13 +321,31 @@ def save_group_chat_digest(
     out_dir: Optional[Path] = None,
     model: str = MODEL,
     **kwargs,
-) -> Path:
+) -> Tuple[Path, List[Dict]]:
+    """Writes digest_ollama.txt; returns (path, threads as JSON-serializable dicts)."""
     out_dir = out_dir or Path(constants.results_dir())
     out_dir.mkdir(parents=True, exist_ok=True)
-    _, text = build_group_chat_digest(data, model=model, **kwargs)
+    top, fallback = _build_thread_results(data, model=model, **kwargs)
+    text = fallback or _render_digest_text(top)
     out_path = out_dir / "digest_ollama.txt"
     out_path.write_text(text, encoding="utf-8")
-    return out_path
+    return out_path, _threads_to_dicts(top)
+
+
+def _threads_to_dicts(results: List[ThreadResult]) -> List[Dict]:
+    return [
+        {
+            "rank": i,
+            "start": r.start.isoformat(timespec="seconds"),
+            "end": r.end.isoformat(timespec="seconds"),
+            "authors": r.authors,
+            "message_count": len(r.thread),
+            "importance_score": r.digest.importance_score,
+            "keywords": r.digest.keywords,
+            "summary": r.digest.summary,
+        }
+        for i, r in enumerate(results, 1)
+    ]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
