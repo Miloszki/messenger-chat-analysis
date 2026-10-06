@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MCA - Podsumowanie</title>
+    <link rel="stylesheet" href="style.css" />
+    <script>
+      // apply the saved theme before first paint to avoid a light flash
+      try {
+        if (localStorage.getItem('darkMode') === 'true') document.documentElement.classList.add('dark')
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div class="summary-container">
+      <div id="loading" class="summary-loading">
+        <div class="spinner"></div>
+        <p>Ładowanie podsumowania...</p>
+      </div>
+
+      <div id="error" class="summary-error" hidden>
+        <p id="error-message">Nie udało się wczytać report.json</p>
+        <code id="error-detail" class="error-detail"></code>
+      </div>
+
+      <nav id="nav" class="summary-nav" hidden>
+        <div class="nav-title">Sekcje</div>
+      </nav>
+
+      <header id="header" class="summary-header" hidden>
+        <div class="header-meta">
+          <span id="header-period" class="header-period"></span>
+        </div>
+        <h1 id="title" class="summary-title"></h1>
+        <div class="header-actions">
+          <button id="dark-toggle" class="icon-button" type="button" title="Tryb ciemny">🌙</button>
+        </div>
+      </header>
+
+      <main id="content" class="summary-content" hidden></main>
+
+      <footer id="footer" class="summary-footer" hidden></footer>
+    </div>
+
+    <div id="lightbox" class="lightbox-overlay" hidden>
+      <div class="lightbox-content">
+        <button class="lightbox-close" type="button" data-action="close" aria-label="Zamknij">×</button>
+        <button class="lightbox-nav lightbox-prev" type="button" data-action="prev" aria-label="Poprzednie">‹</button>
+        <div class="lightbox-media" id="lightbox-media"></div>
+        <button class="lightbox-nav lightbox-next" type="button" data-action="next" aria-label="Następne">›</button>
+        <div class="lightbox-info">
+          <span id="lightbox-caption"></span>
+          <span id="lightbox-counter"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- report.js embeds report.json so the page also works opened from disk; missing over HTTP is fine -->
+    <script src="report.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

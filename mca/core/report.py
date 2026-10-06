@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -7,6 +8,9 @@ from ..config import constants
 
 SCHEMA_VERSION = "1.0"
 REPORT_FILENAME = "report.json"
+REPORT_JS_FILENAME = "report.js"
+SITE_DIR = Path(__file__).resolve().parents[2] / "site"
+SITE_FILES = ["index.html", "style.css", "app.js"]
 
 SECTIONS = [
     "chat",
@@ -55,8 +59,20 @@ class Report:
         return self.data.get(key)
 
     def save(self) -> Path:
-        out_path = Path(constants.results_dir()) / REPORT_FILENAME
-        out_path.parent.mkdir(parents=True, exist_ok=True)
+        results = Path(constants.results_dir())
+        results.mkdir(parents=True, exist_ok=True)
+        out_path = results / REPORT_FILENAME
         with out_path.open("w", encoding="utf-8") as f:
             json.dump(self.data, f, ensure_ascii=False, indent=2)
+
+        payload = json.dumps(self.data, ensure_ascii=False, indent=2)
+        (results / REPORT_JS_FILENAME).write_text(f"window.MCA_REPORT = {payload};\n", encoding="utf-8")
+        copy_site(results)
         return out_path
+
+
+def copy_site(results: Path) -> None:
+    for name in SITE_FILES:
+        source = SITE_DIR / name
+        if source.exists():
+            shutil.copyfile(source, results / name)
