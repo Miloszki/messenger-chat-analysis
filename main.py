@@ -21,10 +21,7 @@ from mca.analytics.media import (
     get_topn_videos,
     save_topn_videos,
 )
-from mca.analytics.message_length import (
-    display_average_message_lengths,
-    get_average_message_length,
-)
+from mca.analytics.reactions import get_ratios, get_reaction_scores
 from mca.analytics.participant_stats import (
     build_participant_stats_rows,
     count_media_and_emojis,
@@ -364,11 +361,6 @@ def process_chat(path, folder, chat_name):
         )
         return "Word cloud generated"
 
-    def run_message_lengths():
-        lengths = get_average_message_length(messages)
-        display_average_message_lengths(lengths, debug)
-        return "Message lengths processed"
-
     def run_emojis():
         emojis = extract_emojis(messages)
         if emojis:
@@ -398,7 +390,6 @@ def process_chat(path, folder, chat_name):
                     "emoji_count": row["emojis_sent"],
                     "photo_count": row["photos_sent"],
                     "video_count": row["videos_sent"],
-                    "avg_message_length": None,
                     "podium_rank": next((r for r in (1, 2, 3) if row[f"rank_{r}"]), None),
                 }
                 for row in sorted(rows, key=lambda r: r["messages_sent"], reverse=True)
@@ -406,6 +397,48 @@ def process_chat(path, folder, chat_name):
         )
         report.set_in(("files", "participant_stats_csv"), rel_path(participant_stats_csv_path(month_slug)))
         return "Participant stats saved"
+
+    def run_reactions():
+        def r3(x):
+            return round(x, 3) if x is not None else None
+
+        scores, group_mean = get_reaction_scores(
+            messages, _constants.TURN_GAP_MINUTES, _constants.REACTION_SCORE_PRIOR_TURNS
+        )
+        report.set(
+            "reactions",
+            {
+                "method": {
+                    "turn_gap_minutes": _constants.TURN_GAP_MINUTES,
+                    "prior_turns": _constants.REACTION_SCORE_PRIOR_TURNS,
+                    "group_mean_per_turn": r3(group_mean),
+                },
+                "items": ranked(
+                    {k: r3(v) if isinstance(v, float) else v for k, v in row.items()} for row in scores
+                ),
+            },
+        )
+
+        ratios, min_reactors = get_ratios(messages, num_participants, _constants.RATIO_MIN_SHARE)
+        report.set(
+            "ratios",
+            {
+                "min_share": _constants.RATIO_MIN_SHARE,
+                "member_count": num_participants,
+                "min_reactors": min_reactors,
+                "items": ranked({**r, "reactor_share": r3(r["reactor_share"])} for r in ratios),
+            },
+        )
+
+        by_name = {row["name"]: row for row in scores}
+        ratio_counts = Counter(r["sender"] for r in ratios)
+        for participant in report.get("participants") or []:
+            row = by_name.get(participant["name"])
+            participant["reactions_received"] = row["reactions_received"] if row else 0
+            participant["reaction_score"] = r3(row["reaction_score"]) if row else None
+            participant["marker"] = r3(row["marker"]) if row else None
+            participant["ratio_count"] = ratio_counts.get(participant["name"], 0)
+        return f"Reactions processed ({len(ratios)} ratios)"
 
     def run_digest():
         out = save_group_chat_digest(data, out_dir=results_dir)
@@ -449,15 +482,15 @@ def process_chat(path, folder, chat_name):
         ("Processing links", run_links),
         ("Processing top users", run_top_users),
         ("Saving participant stats", run_save_participant_stats),
+        ("Processing reactions and ratios", run_reactions),
         ("Displaying media", run_media),
         ("Processing day labeling", run_label_days),
         ("Processing active days", run_active_days),
-        ("Processing chat digest", run_digest),
-        ("Processing ollama chat digest", run_ollama_digest),
-        ("Processing ollama month summary", run_ollama_month_summary),
-        ("Processing ollama active day summaries", run_ollama_active_days_summary),
+        # ("Processing chat digest", run_digest),
+        # ("Processing ollama chat digest", run_ollama_digest),
+        # ("Processing ollama month summary", run_ollama_month_summary),
+        # ("Processing ollama active day summaries", run_ollama_active_days_summary),
         ("Generating word cloud", run_word_cloud),
-        ("Processing message lengths", run_message_lengths),
         ("Processing emojis", run_emojis),
     ]
 

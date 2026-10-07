@@ -18,6 +18,8 @@ SECTIONS = [
     "media",
     "words",
     "emojis",
+    "reactions",
+    "ratios",
     "summaries",
     "files",
 ]

@@ -30,6 +30,11 @@ MESSENGER_BUILTIN_MESSAGES = [
     "This poll is no longer available",
 ]
 
+RATIO_MIN_SHARE = 0.5
+
+TURN_GAP_MINUTES = 5
+REACTION_SCORE_PRIOR_TURNS = 10
+
 # Olympic podium colors
 COLORS = ["#E6C200", "#A7A7AD", "#A77044"]
 

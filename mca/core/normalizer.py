@@ -10,6 +10,12 @@ def standarize(data):
         message["sender_name"] = message["sender_name"].encode("latin1").decode("utf-8")
         if "content" in message:
             message["content"] = message["content"].encode("latin1").decode("utf-8")
+        for reaction in message.get("reactions", []):
+            if not isinstance(reaction, dict):
+                continue
+            for key in ("actor", "reaction"):
+                if key in reaction:
+                    reaction[key] = reaction[key].encode("latin1").decode("utf-8")
 
 
 def save_messages_from_person(data, person_name, output_file):

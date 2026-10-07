@@ -20,6 +20,8 @@ class ParsedMessage:
     emojis: list = field(default_factory=list)
     photos: list = field(default_factory=list)
     videos: list = field(default_factory=list)
+    reactors: list = field(default_factory=list)
+    reactions: list = field(default_factory=list)
     is_builtin: bool = False
 
 
@@ -28,7 +30,11 @@ def parse_messages(data):
     for message in data["messages"]:
         current_sender = message["sender_name"]
         content = message.get("content")
-        num_reactions = len(message.get("reactions", []))
+        raw_reactions = message.get("reactions", [])
+        num_reactions = len(raw_reactions)
+        reaction_dicts = [r for r in raw_reactions if isinstance(r, dict)]
+        reactors = [r.get("actor") for r in reaction_dicts]
+        reactions = [r.get("reaction") for r in reaction_dicts]
         date = datetime.fromtimestamp(message["timestamp_ms"] / 1000.0).strftime("%Y-%m-%d")
 
         urls = []
@@ -40,7 +46,10 @@ def parse_messages(data):
         if num_reactions and not photos and not videos:
             if parsed and (parsed[-1].photos or parsed[-1].videos) and parsed[-1].sender == current_sender:
                 parsed[-1].num_reactions += num_reactions
+                parsed[-1].reactors.extend(reactors)
+                parsed[-1].reactions.extend(reactions)
                 num_reactions = 0
+                reactors, reactions = [], []
 
         if content:
             is_builtin = any(kw in content for kw in MESSENGER_BUILTIN_MESSAGES)
@@ -60,6 +69,8 @@ def parse_messages(data):
                 emojis=emojis_in_msg,
                 photos=photos,
                 videos=videos,
+                reactors=reactors,
+                reactions=reactions,
                 is_builtin=is_builtin,
             )
         )
