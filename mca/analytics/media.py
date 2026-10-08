@@ -1,9 +1,8 @@
 import os
-import platform
 import subprocess
 from shutil import copyfile
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 
 from ..config import constants
 
@@ -24,7 +23,9 @@ def get_most_reactedto_photos(messages):
 
 
 def get_topn_photos(photo_data, top_n=5, num_participants=1):
-    dynamic_topn = len([x for x in photo_data if x["num_reactions"] > int(num_participants * 0.2)])
+    dynamic_topn = len(
+        [x for x in photo_data if x["num_reactions"] > int(num_participants * 0.2)]
+    )
     if dynamic_topn > top_n:
         top_n = dynamic_topn
     result = sorted(photo_data, reverse=True, key=lambda x: x["num_reactions"])[:top_n]
@@ -48,7 +49,9 @@ def get_most_reactedto_videos(messages):
 
 
 def get_topn_videos(video_data, top_n=5, num_participants=1):
-    dynamic_topn = len([x for x in video_data if x["num_reactions"] > int(num_participants * 0.2)])
+    dynamic_topn = len(
+        [x for x in video_data if x["num_reactions"] > int(num_participants * 0.2)]
+    )
     if dynamic_topn > top_n:
         top_n = dynamic_topn
     result = sorted(video_data, reverse=True, key=lambda x: x["num_reactions"])[:top_n]
@@ -67,61 +70,22 @@ def display_topn_photos(photos, folder_path, debug):
         try:
             im = Image.open(photo_path)
 
-            fillcolor = "white"
-            shadowcolor = "black"
-            text = photo["sent_by"] + " " + str(photo["num_reactions"])
-
-            fontsize = 20 if im.width < 500 or im.height < 500 else 40
-
-            _text_font_candidates = {
-                "Windows": ["C:/Windows/Fonts/arial.ttf", "C:/Windows/Fonts/segoeui.ttf"],
-                "Darwin": [
-                    "/System/Library/Fonts/Supplemental/Arial.ttf",
-                    "/System/Library/Fonts/Helvetica.ttc",
-                ],
-                "Linux": [
-                    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-                    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-                    "/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf",
-                    "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
-                ],
-            }
-            font = ImageFont.load_default()
-            for candidate in _text_font_candidates.get(platform.system(), []):
-                if os.path.exists(candidate):
-                    try:
-                        font = ImageFont.truetype(candidate, fontsize)
-                    except OSError:
-                        continue
-                    break
-
-            text_width = font.getlength(text)
-            newim = Image.new("RGB", (im.width, im.height + fontsize), "black")
-            newim.paste(im, (0, fontsize))
-
-            draw = ImageDraw.Draw(newim)
-            x, y = (im.width - text_width) / 2, 0
-
-            draw.text((x - 1, y - 1), text, font=font, fill=shadowcolor)
-            draw.text((x + 1, y - 1), text, font=font, fill=shadowcolor)
-            draw.text((x - 1, y + 1), text, font=font, fill=shadowcolor)
-            draw.text((x + 1, y + 1), text, font=font, fill=shadowcolor)
-            draw.text((x, y), text, font=font, fill=fillcolor)
-
             if debug:
-                newim.show()
+                im.show()
 
-            if newim.mode in ("RGBA", "P", "LA"):
-                rgb_im = Image.new("RGB", newim.size, (255, 255, 255))
-                if newim.mode == "P":
-                    newim = newim.convert("RGBA")
-                rgb_im.paste(newim, mask=newim.split()[-1] if newim.mode in ("RGBA", "LA") else None)
-                newim = rgb_im
+            if im.mode in ("RGBA", "P", "LA"):
+                rgb_im = Image.new("RGB", im.size, (255, 255, 255))
+                if im.mode == "P":
+                    im = im.convert("RGBA")
+                rgb_im.paste(
+                    im, mask=im.split()[-1] if im.mode in ("RGBA", "LA") else None
+                )
+                im = rgb_im
 
             saved += 1
             os.makedirs(f"{constants.results_dir()}/top3photos/", exist_ok=True)
             destination = f"{constants.results_dir()}/top3photos/photo{saved}.jpg"
-            newim.save(
+            im.save(
                 destination,
                 "JPEG",
                 quality=85,

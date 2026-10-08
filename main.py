@@ -21,26 +21,38 @@ from mca.analytics.media import (
     get_topn_videos,
     save_topn_videos,
 )
-from mca.analytics.reactions import get_ratios, get_reaction_scores
 from mca.analytics.participant_stats import (
     build_participant_stats_rows,
     count_media_and_emojis,
     get_month_slug,
 )
+from mca.analytics.reactions import get_ratios, get_reaction_scores
 from mca.config.constants import COLORS, IS_WINDOWS
 from mca.core.interval import check_month_interval, filter_messages_to_one_month
 from mca.core.normalizer import standarize
-from mca.core.parse_results_csv import participant_stats_csv_path, save_participant_stats
+from mca.core.parse_results_csv import (
+    participant_stats_csv_path,
+    save_participant_stats,
+)
 from mca.core.parsed_messages import parse_messages
 from mca.core.report import Report, ranked, rel_path
 from mca.ml.label_days import display_label_calendar, label_days
 from mca.nlp.digest import save_group_chat_digest
 from mca.nlp.summarize_ollama import (
     save_group_chat_digest as save_ollama_digest,
+)
+from mca.nlp.summarize_ollama import (
     summarize_month as ollama_summarize_month,
+)
+from mca.nlp.summarize_ollama import (
     summarize_most_active_days as ollama_summarize_active_days,
 )
-from mca.viz.emojis import create_emoji_cloud, extract_emojis, get_emoji_counts, save_emoji_cloud
+from mca.viz.emojis import (
+    create_emoji_cloud,
+    extract_emojis,
+    get_emoji_counts,
+    save_emoji_cloud,
+)
 from mca.viz.word_cloud import display_word_cloud, get_most_used_words, get_word_counts
 
 try:
@@ -80,8 +92,14 @@ GENERAL_MIN_MESSAGES = 15
 def displayGeneral(members, debug):
     plt.figure(figsize=(12, 6))
     sorted_members = sorted(members, key=lambda x: x["name"])
-    list_names = [x["name"] for x in sorted_members if x["num_of_messages"] > GENERAL_MIN_MESSAGES]
-    list_mess = [x["num_of_messages"] for x in sorted_members if x["num_of_messages"] > GENERAL_MIN_MESSAGES]
+    list_names = [
+        x["name"] for x in sorted_members if x["num_of_messages"] > GENERAL_MIN_MESSAGES
+    ]
+    list_mess = [
+        x["num_of_messages"]
+        for x in sorted_members
+        if x["num_of_messages"] > GENERAL_MIN_MESSAGES
+    ]
     bars = plt.barh(list_names, list_mess)
     plt.grid(axis="y")
     plt.title("Liczba wiadomości na osobę (przynajmniej 15 wiadomości)")
@@ -90,7 +108,9 @@ def displayGeneral(members, debug):
     plt.ylabel("Uczestnicy")
 
     if not list_mess:
-        print("No members with more than 15 messages, skipping general statistics chart")
+        print(
+            "No members with more than 15 messages, skipping general statistics chart"
+        )
         plt.close()
         return
 
@@ -154,7 +174,9 @@ def displayTop3(members, debug):
 def pick_chat_to_analyze(folder):
     chats = []
     paths = []
-    for i, file in enumerate(glob.glob(f"./{folder}/your_facebook_activity/messages/inbox/*")):
+    for i, file in enumerate(
+        glob.glob(f"./{folder}/your_facebook_activity/messages/inbox/*")
+    ):
         path = standarize_path(file).split("/")[-1]
         chat_name = path.split("_")[0]
         chats.append((i + 1, chat_name))
@@ -162,7 +184,9 @@ def pick_chat_to_analyze(folder):
     print(f"Available chats in {folder}:")
     print(tabulate(chats, headers=["Number", "Name"], tablefmt="outline"))
     choice = int(
-        input("Pick a chat to analyze (0 picks nothing and continues to other available folders if there are any): ")
+        input(
+            "Pick a chat to analyze (0 picks nothing and continues to other available folders if there are any): "
+        )
     )
     if choice < 1 or choice > len(chats):
         print("Wrong choice, exiting")
@@ -178,10 +202,14 @@ def pick_chat_to_analyze(folder):
 def get_facebook_folders():
     current_dir = Path.cwd()
     facebook_folders = [
-        folder.name for folder in current_dir.iterdir() if folder.is_dir() and folder.name.startswith("facebook")
+        folder.name
+        for folder in current_dir.iterdir()
+        if folder.is_dir() and folder.name.startswith("facebook")
     ]
     if not facebook_folders:
-        print("Did not find any facebook folders, try putting the folder in the same directory as the script")
+        print(
+            "Did not find any facebook folders, try putting the folder in the same directory as the script"
+        )
         exit(1)
     return facebook_folders[::-1]
 
@@ -231,8 +259,12 @@ def process_chat(path, folder, chat_name):
                 "year": int(messages[0].date[:4]),
             },
             "period": {
-                "first_message_at": datetime.fromtimestamp(min(timestamps) / 1000).isoformat(timespec="seconds"),
-                "last_message_at": datetime.fromtimestamp(max(timestamps) / 1000).isoformat(timespec="seconds"),
+                "first_message_at": datetime.fromtimestamp(
+                    min(timestamps) / 1000
+                ).isoformat(timespec="seconds"),
+                "last_message_at": datetime.fromtimestamp(
+                    max(timestamps) / 1000
+                ).isoformat(timespec="seconds"),
             },
             "participant_count": num_participants,
             "message_count": None,
@@ -241,7 +273,9 @@ def process_chat(path, folder, chat_name):
 
     def run_member_processing():
         count_messages(messages, members)
-        report.set_in(("chat", "message_count"), sum(m["num_of_messages"] for m in members))
+        report.set_in(
+            ("chat", "message_count"), sum(m["num_of_messages"] for m in members)
+        )
         return members
 
     def run_general_stats():
@@ -266,7 +300,11 @@ def process_chat(path, folder, chat_name):
                 "file": "links.txt",
                 "total_count": len(collect_links(messages)),
                 "items": ranked(
-                    {"url": link["URL"], "sender": link["sender"], "reaction_count": link["num_reactions"]}
+                    {
+                        "url": link["URL"],
+                        "sender": link["sender"],
+                        "reaction_count": link["num_reactions"],
+                    }
                     for link in top_links
                 ),
             },
@@ -281,7 +319,10 @@ def process_chat(path, folder, chat_name):
             "top_participants",
             {
                 "image": "top3.png",
-                "items": ranked({"name": m["name"], "message_count": m["num_of_messages"]} for m in _top3),
+                "items": ranked(
+                    {"name": m["name"], "message_count": m["num_of_messages"]}
+                    for m in _top3
+                ),
             },
         )
         return "Top users processed"
@@ -289,9 +330,19 @@ def process_chat(path, folder, chat_name):
     def run_media():
         photos = get_most_reactedto_photos(messages)
         videos = get_most_reactedto_videos(messages)
-        top3photos = get_topn_photos(photos, num_participants=num_participants) if photos else None
-        top3videos = get_topn_videos(videos, num_participants=num_participants) if videos else None
-        saved_photos = display_topn_photos(top3photos, folder, debug) if top3photos else []
+        top3photos = (
+            get_topn_photos(photos, num_participants=num_participants)
+            if photos
+            else None
+        )
+        top3videos = (
+            get_topn_videos(videos, num_participants=num_participants)
+            if videos
+            else None
+        )
+        saved_photos = (
+            display_topn_photos(top3photos, folder, debug) if top3photos else []
+        )
         saved_videos = save_topn_videos(top3videos, folder) if top3videos else []
 
         def media_items(saved, uri_key):
@@ -305,7 +356,13 @@ def process_chat(path, folder, chat_name):
                 for item in saved
             )
 
-        report.set("media", {"photos": media_items(saved_photos, "photo"), "videos": media_items(saved_videos, "video")})
+        report.set(
+            "media",
+            {
+                "photos": media_items(saved_photos, "photo"),
+                "videos": media_items(saved_videos, "video"),
+            },
+        )
         return "Media processed"
 
     _day_labels: dict = {}
@@ -320,7 +377,10 @@ def process_chat(path, folder, chat_name):
             ("activity", "day_labels"),
             {
                 "image": "day_label_calendar.png" if result else None,
-                "items": [{"date": date, "label": label} for date, label in sorted(_day_labels.items())],
+                "items": [
+                    {"date": date, "label": label}
+                    for date, label in sorted(_day_labels.items())
+                ],
                 "label_counts": dict(Counter(_day_labels.values()).most_common()),
             },
         )
@@ -356,7 +416,9 @@ def process_chat(path, folder, chat_name):
                 "image": "words.png" if words else None,
                 "total_count": len(words),
                 "unique_count": len(set(words)),
-                "items": ranked({"word": w, "count": c} for w, c in get_word_counts(words, 200)),
+                "items": ranked(
+                    {"word": w, "count": c} for w, c in get_word_counts(words, 200)
+                ),
             },
         )
         return "Word cloud generated"
@@ -372,14 +434,18 @@ def process_chat(path, folder, chat_name):
                 "image": "emoji_cloud.png" if emojis else None,
                 "total_count": len(emojis),
                 "unique_count": len(set(emojis)),
-                "items": ranked({"emoji": e, "count": c} for e, c in get_emoji_counts(emojis, 50)),
+                "items": ranked(
+                    {"emoji": e, "count": c} for e, c in get_emoji_counts(emojis, 50)
+                ),
             },
         )
         return "Emojis processed"
 
     def run_save_participant_stats():
         media_counts = count_media_and_emojis(messages)
-        rows = build_participant_stats_rows(members, media_counts, _top3, _constants.CHATNAME, month_slug)
+        rows = build_participant_stats_rows(
+            members, media_counts, _top3, _constants.CHATNAME, month_slug
+        )
         save_participant_stats(rows)
         report.set(
             "participants",
@@ -390,12 +456,17 @@ def process_chat(path, folder, chat_name):
                     "emoji_count": row["emojis_sent"],
                     "photo_count": row["photos_sent"],
                     "video_count": row["videos_sent"],
-                    "podium_rank": next((r for r in (1, 2, 3) if row[f"rank_{r}"]), None),
+                    "podium_rank": next(
+                        (r for r in (1, 2, 3) if row[f"rank_{r}"]), None
+                    ),
                 }
                 for row in sorted(rows, key=lambda r: r["messages_sent"], reverse=True)
             ],
         )
-        report.set_in(("files", "participant_stats_csv"), rel_path(participant_stats_csv_path(month_slug)))
+        report.set_in(
+            ("files", "participant_stats_csv"),
+            rel_path(participant_stats_csv_path(month_slug)),
+        )
         return "Participant stats saved"
 
     def run_reactions():
@@ -414,19 +485,28 @@ def process_chat(path, folder, chat_name):
                     "group_mean_per_turn": r3(group_mean),
                 },
                 "items": ranked(
-                    {k: r3(v) if isinstance(v, float) else v for k, v in row.items()} for row in scores
+                    {k: r3(v) if isinstance(v, float) else v for k, v in row.items()}
+                    for row in scores
                 ),
             },
         )
 
-        ratios, min_reactors = get_ratios(messages, num_participants, _constants.RATIO_MIN_SHARE)
+        active_count = sum(
+            1 for m in members if m["num_of_messages"] > GENERAL_MIN_MESSAGES
+        )
+        ratios, min_reactors = get_ratios(
+            messages, active_count, _constants.RATIO_MIN_SHARE
+        )
         report.set(
             "ratios",
             {
                 "min_share": _constants.RATIO_MIN_SHARE,
-                "member_count": num_participants,
+                "active_min_messages": GENERAL_MIN_MESSAGES,
+                "active_count": active_count,
                 "min_reactors": min_reactors,
-                "items": ranked({**r, "reactor_share": r3(r["reactor_share"])} for r in ratios),
+                "items": ranked(
+                    {**r, "reactor_share": r3(r["reactor_share"])} for r in ratios
+                ),
             },
         )
 
@@ -442,19 +522,26 @@ def process_chat(path, folder, chat_name):
 
     def run_digest():
         out = save_group_chat_digest(data, out_dir=results_dir)
-        report.set_in(("summaries", "digest"), {"file": rel_path(out), "text": out.read_text(encoding="utf-8")})
+        report.set_in(
+            ("summaries", "digest"),
+            {"file": rel_path(out), "text": out.read_text(encoding="utf-8")},
+        )
         return "Chat digest processed"
 
     def run_ollama_digest():
         out, threads = save_ollama_digest(data, out_dir=results_dir)
-        report.set_in(("summaries", "ollama_digest"), {"file": rel_path(out), "threads": threads})
+        report.set_in(
+            ("summaries", "ollama_digest"), {"file": rel_path(out), "threads": threads}
+        )
         return "Ollama chat digest processed"
 
     def run_ollama_month_summary():
         summary = ollama_summarize_month(data)
         out = results_dir / "month_summary_ollama.txt"
         out.write_text(summary.summary, encoding="utf-8")
-        report.set_in(("summaries", "month"), {"file": rel_path(out), "text": summary.summary})
+        report.set_in(
+            ("summaries", "month"), {"file": rel_path(out), "text": summary.summary}
+        )
         return f"Ollama month summary saved to {out}"
 
     def run_ollama_active_days_summary():
@@ -486,10 +573,10 @@ def process_chat(path, folder, chat_name):
         ("Displaying media", run_media),
         ("Processing day labeling", run_label_days),
         ("Processing active days", run_active_days),
-        # ("Processing chat digest", run_digest),
-        # ("Processing ollama chat digest", run_ollama_digest),
-        # ("Processing ollama month summary", run_ollama_month_summary),
-        # ("Processing ollama active day summaries", run_ollama_active_days_summary),
+        ("Processing chat digest", run_digest),
+        ("Processing ollama chat digest", run_ollama_digest),
+        ("Processing ollama month summary", run_ollama_month_summary),
+        ("Processing ollama active day summaries", run_ollama_active_days_summary),
         ("Generating word cloud", run_word_cloud),
         ("Processing emojis", run_emojis),
     ]
@@ -519,7 +606,13 @@ if __name__ == "__main__":
         chat_to_analyze = pick_chat_to_analyze(folder)
 
         if chat_to_analyze:
-            path = Path(folder) / "your_facebook_activity" / "messages" / "inbox" / chat_to_analyze
+            path = (
+                Path(folder)
+                / "your_facebook_activity"
+                / "messages"
+                / "inbox"
+                / chat_to_analyze
+            )
             picked = True
             break
 
