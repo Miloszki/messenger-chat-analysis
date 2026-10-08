@@ -63,9 +63,9 @@ def get_reaction_scores(messages, gap_minutes, prior_turns):
     return rows, group_mean
 
 
-def get_ratios(messages, member_count, min_share):
-    """Text messages reacted to by at least `min_share` of members (sender's own reaction excluded)."""
-    min_reactors = max(1, math.ceil(min_share * member_count))
+def get_ratios(messages, active_count, min_share):
+    """Text messages reacted to by at least `min_share` of active participants (sender's own reaction excluded)."""
+    min_reactors = max(1, math.ceil(min_share * active_count))
     ratios = []
     for msg in messages:
         if msg.is_builtin or not msg.content or msg.photos or msg.videos:
@@ -83,7 +83,7 @@ def get_ratios(messages, member_count, min_share):
                 "sent_at": datetime.fromtimestamp(msg.timestamp_ms / 1000).isoformat(timespec="seconds"),
                 "date": msg.date,
                 "reactor_count": len(reactors),
-                "reactor_share": len(reactors) / member_count if member_count else None,
+                "reactor_share": len(reactors) / active_count if active_count else None,
                 "reactions": dict(reactions.most_common()),
             }
         )
